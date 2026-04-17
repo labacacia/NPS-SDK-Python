@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  nip-ca:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${NIP_PORT:-17440}:17440"
+    volumes:
+      - ca_data:/data
+    environment:
+      NIP_CA_NID:          ${NIP_CA_NID:?NIP_CA_NID is required}
+      NIP_CA_PASSPHRASE:   ${NIP_CA_PASSPHRASE:?NIP_CA_PASSPHRASE is required}
+      NIP_CA_BASE_URL:     ${NIP_CA_BASE_URL:?NIP_CA_BASE_URL is required}
+      NIP_CA_DISPLAY_NAME: ${NIP_CA_DISPLAY_NAME:-NPS CA}
+      NIP_CA_KEY_FILE:     /data/ca.key.enc
+      NIP_CA_DB_PATH:      /data/ca.db
+      NIP_CA_AGENT_VALIDITY_DAYS: ${NIP_CA_AGENT_VALIDITY_DAYS:-30}
+      NIP_CA_NODE_VALIDITY_DAYS:  ${NIP_CA_NODE_VALIDITY_DAYS:-90}
+      NIP_CA_RENEWAL_WINDOW_DAYS: ${NIP_CA_RENEWAL_WINDOW_DAYS:-7}
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:17440/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  ca_data:
