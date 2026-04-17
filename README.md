@@ -43,16 +43,19 @@ pip install nps-lib
 pip install "nps-lib[dev]"
 ```
 
-## Modules
+## API Reference
 
-| Module | Description |
-|--------|-------------|
-| `nps_sdk.core` | Frame header, codec (Tier-1 JSON / Tier-2 MsgPack), anchor cache, exceptions |
-| `nps_sdk.ncp`  | NCP frames: `AnchorFrame`, `DiffFrame`, `StreamFrame`, `CapsFrame`, `ErrorFrame` |
-| `nps_sdk.nwp`  | NWP frames: `QueryFrame`, `ActionFrame`; async `NwpClient` |
-| `nps_sdk.nip`  | NIP frames: `IdentFrame`, `RevokeFrame`; `NipIdentity` (Ed25519) |
-| `nps_sdk.ndp`  | NDP frames + in-memory registry + announce validator |
-| `nps_sdk.nop`  | NOP frames, DAG models, async orchestration client |
+Full class and method reference lives under [`doc/`](./doc/):
+
+| Module | Description | Reference |
+|--------|-------------|-----------|
+| — | Package overview, install, quick-start | [`doc/overview.md`](./doc/overview.md) |
+| `nps_sdk.core` | Frame header, codec (Tier-1 JSON / Tier-2 MsgPack), anchor cache, exceptions | [`doc/nps_sdk.core.md`](./doc/nps_sdk.core.md) |
+| `nps_sdk.ncp`  | NCP frames: `AnchorFrame`, `DiffFrame`, `StreamFrame`, `CapsFrame`, `ErrorFrame` | [`doc/nps_sdk.ncp.md`](./doc/nps_sdk.ncp.md) |
+| `nps_sdk.nwp`  | NWP frames: `QueryFrame`, `ActionFrame`; async `NwpClient` | [`doc/nps_sdk.nwp.md`](./doc/nps_sdk.nwp.md) |
+| `nps_sdk.nip`  | NIP frames: `IdentFrame`, `RevokeFrame`; `NipIdentity` (Ed25519) | [`doc/nps_sdk.nip.md`](./doc/nps_sdk.nip.md) |
+| `nps_sdk.ndp`  | NDP frames + in-memory registry + announce validator | [`doc/nps_sdk.ndp.md`](./doc/nps_sdk.ndp.md) |
+| `nps_sdk.nop`  | NOP frames, DAG models, async orchestration client | [`doc/nps_sdk.nop.md`](./doc/nps_sdk.nop.md) |
 
 ## Quick Start
 
