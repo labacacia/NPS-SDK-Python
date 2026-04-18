@@ -1,3 +1,5 @@
+English | [中文版](./CONTRIBUTING.cn.md)
+
 # Contributing to NPS
 
 Thank you for your interest in contributing to the Neural Protocol Suite.
