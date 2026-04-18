@@ -1,31 +1,31 @@
-English | [中文版](./nps_sdk.nop.cn.md)
+[English Version](./nps_sdk.nop.md) | 中文版
 
-# `nps_sdk.nop` — Class and Method Reference
+# `nps_sdk.nop` — 类与方法参考
 
-> Root module: `nps_sdk.nop`
-> Spec: [NPS-5 NOP v0.3](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-5-NOP.md)
+> 根模块：`nps_sdk.nop`
+> 规范：[NPS-5 NOP v0.3](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-5-NOP.md)
 
-NOP is the SMTP/MQ of NPS — how multi-Agent workloads get planned, delegated
-and joined. This module ships the four NOP frames (`TaskFrame`,
-`DelegateFrame`, `SyncFrame`, `AlignStreamFrame`), the full DAG model
-(`TaskDag`, `DagNode`, `DagEdge`), retry and aggregation policy enums, and the
-async `NopClient` that talks to Gateway Nodes.
+NOP 是 NPS 的 SMTP/MQ —— 多 Agent 工作负载的规划、委托与
+汇合。本模块提供四个 NOP 帧（`TaskFrame`、`DelegateFrame`、
+`SyncFrame`、`AlignStreamFrame`）、完整 DAG 模型（`TaskDag`、
+`DagNode`、`DagEdge`）、重试与聚合策略枚举，以及与 Gateway
+Node 通信的异步 `NopClient`。
 
 ---
 
-## Table of contents
+## 目录
 
-- [Constants and enums](#constants-and-enums)
+- [常量与枚举](#常量与枚举)
   - [`TaskState`](#taskstate)
-  - [`TaskPriority` / `AggregateStrategy` / `BackoffStrategy`](#string-constant-classes)
-- [Policy and context types](#policy-and-context-types)
+  - [`TaskPriority` / `AggregateStrategy` / `BackoffStrategy`](#字符串常量类)
+- [策略与上下文类型](#策略与上下文类型)
   - [`RetryPolicy`](#retrypolicy)
   - [`TaskContext`](#taskcontext)
-- [DAG model](#dag-model)
+- [DAG 模型](#dag-模型)
   - [`DagEdge`](#dagedge)
   - [`DagNode`](#dagnode)
   - [`TaskDag`](#taskdag)
-- [Frames](#frames)
+- [帧](#帧)
   - [`TaskFrame` (0x40)](#taskframe-0x40)
   - [`DelegateFrame` (0x41)](#delegateframe-0x41)
   - [`SyncFrame` (0x42)](#syncframe-0x42)
@@ -33,17 +33,17 @@ async `NopClient` that talks to Gateway Nodes.
   - [`StreamError`](#streamerror)
 - [`NopClient`](#nopclient)
   - [`NopTaskStatus`](#noptaskstatus)
-- [End-to-end example](#end-to-end-example)
+- [端到端示例](#端到端示例)
 
 ---
 
-## Constants and enums
+## 常量与枚举
 
 ### `TaskState`
 
-`str Enum` — lifecycle state of a NOP task/subtask.
+`str Enum` —— NOP 任务/子任务的生命周期状态。
 
-| Member | Value |
+| 成员 | 值 |
 |--------|-------|
 | `PENDING` | `"pending"` |
 | `PREFLIGHT` | `"preflight"` |
@@ -54,10 +54,10 @@ async `NopClient` that talks to Gateway Nodes.
 | `CANCELLED` | `"cancelled"` |
 | `SKIPPED` | `"skipped"` |
 
-### String-constant classes
+### 字符串常量类
 
-Not real enums — plain classes with string class-attributes so they round-trip
-through JSON/MsgPack without special handling.
+并非真正的枚举 —— 只是持有字符串类属性的普通类，这样
+无需特殊处理就能往返 JSON/MsgPack。
 
 ```python
 class TaskPriority:
@@ -66,10 +66,10 @@ class TaskPriority:
     HIGH   = "high"
 
 class AggregateStrategy:
-    MERGE      = "merge"          # deep-merge dicts
-    FIRST      = "first"          # first completed result
-    ALL        = "all"            # list of all results
-    FASTEST_K  = "fastest_k"      # first K to complete
+    MERGE      = "merge"          # 深度合并 dict
+    FIRST      = "first"          # 第一个完成的结果
+    ALL        = "all"            # 所有结果的列表
+    FASTEST_K  = "fastest_k"      # 最先完成的 K 个
 
 class BackoffStrategy:
     FIXED       = "fixed"
@@ -79,11 +79,11 @@ class BackoffStrategy:
 
 ---
 
-## Policy and context types
+## 策略与上下文类型
 
 ### `RetryPolicy`
 
-Per-node retry policy with backoff.
+带退避的单节点重试策略。
 
 ```python
 @dataclass(frozen=True)
@@ -100,18 +100,17 @@ class RetryPolicy:
     def from_dict(cls, data: dict[str, Any]) -> "RetryPolicy"
 ```
 
-- `retry_on` — tuple of error codes (e.g. `"NOP-NODE-TIMEOUT"`) that are
-  considered retryable; empty means "retry on any error".
-- `compute_delay_ms(attempt)` — `attempt` is 1-based:
+- `retry_on` —— 被视为可重试的错误码元组（如 `"NOP-NODE-TIMEOUT"`）；
+  空表示"任何错误都重试"。
+- `compute_delay_ms(attempt)` —— `attempt` 从 1 开始：
   - `FIXED` → `initial_delay_ms`
   - `LINEAR` → `initial_delay_ms * attempt`
   - `EXPONENTIAL` → `initial_delay_ms * 2**(attempt-1)`
-  - Result is clamped to `max_delay_ms`.
+  - 结果截断到 `max_delay_ms`。
 
 ### `TaskContext`
 
-Distributed tracing context forwarded through the delegation chain
-(OpenTelemetry-shaped).
+委托链中转发的分布式追踪上下文（OpenTelemetry 形态）。
 
 ```python
 @dataclass(frozen=True)
@@ -130,14 +129,14 @@ class TaskContext:
 
 ---
 
-## DAG model
+## DAG 模型
 
 ### `DagEdge`
 
 ```python
 @dataclass(frozen=True)
 class DagEdge:
-    from_: str       # serialised as "from" on the wire
+    from_: str       # 线路上序列化为 "from"
     to:    str
 
     def to_dict(self) -> dict[str, Any]
@@ -145,8 +144,7 @@ class DagEdge:
     def from_dict(cls, data: dict[str, Any]) -> "DagEdge"
 ```
 
-`from_` (trailing underscore) sidesteps the Python keyword; the wire form is
-`"from"`.
+`from_`（带尾下划线）规避 Python 关键字；线路形式为 `"from"`。
 
 ### `DagNode`
 
@@ -154,22 +152,22 @@ class DagEdge:
 @dataclass(frozen=True)
 class DagNode:
     id:             str
-    action:         str                    # "nwp://…" URL OR "preflight" / "cancel"
-    agent:          str                    # worker NID, urn:nps:agent:...
+    action:         str                    # "nwp://…" URL 或 "preflight" / "cancel"
+    agent:          str                    # worker NID，urn:nps:agent:...
     input_from:     tuple[str, ...] = ()
     input_mapping:  dict[str, str] | None = None    # {param_name → JSONPath}
     timeout_ms:     int | None = None
     retry_policy:   RetryPolicy | None = None
-    condition:      str | None = None               # CEL subset
+    condition:      str | None = None               # CEL 子集
     min_required:   int = 0                         # K-of-N fan-in
 ```
 
-Notes:
+说明：
 
-- `condition` is evaluated against the aggregate upstream result; `min_required`
-  controls fan-in semantics at a sync barrier.
-- `action` supports both nwp:// URLs and two control verbs (`"preflight"`,
-  `"cancel"`) that the orchestrator short-circuits.
+- `condition` 对聚合的上游结果求值；`min_required` 在 sync
+  屏障处控制 fan-in 语义。
+- `action` 同时支持 nwp:// URL 和两个控制动词（`"preflight"`、
+  `"cancel"`），编排器会对其短路处理。
 
 ### `TaskDag`
 
@@ -180,16 +178,16 @@ class TaskDag:
     edges: tuple[DagEdge, ...]
 ```
 
-Spec limits enforced server-side (NPS-5 §4.1): up to 32 nodes; delegate chain
-depth ≤ 3; max timeout 3 600 000 ms.
+服务端强制执行的规范限制（NPS-5 §4.1）：最多 32 个节点；
+委托链深度 ≤ 3；最大 timeout 3 600 000 ms。
 
 ---
 
-## Frames
+## 帧
 
 ### `TaskFrame` (0x40)
 
-DAG task definition, submitted to a Gateway Node.
+提交到 Gateway Node 的 DAG 任务定义。
 
 ```python
 @dataclass(frozen=True)
@@ -199,16 +197,16 @@ class TaskFrame(NpsFrame):
     timeout_ms:      int  = 30_000
     max_retries:     int  = 2
     priority:        str  = TaskPriority.NORMAL
-    callback_url:    str | None = None              # HTTPS only
+    callback_url:    str | None = None              # 仅 HTTPS
     preflight:       bool = False
     context:         TaskContext | None = None
     request_id:      str | None = None
-    delegate_depth:  int  = 0                       # 0 for root tasks
+    delegate_depth:  int  = 0                       # 根任务为 0
 ```
 
 ### `DelegateFrame` (0x41)
 
-Subtask delegation from orchestrator to a worker Agent.
+编排器向 worker Agent 的子任务委托。
 
 ```python
 @dataclass(frozen=True)
@@ -229,24 +227,24 @@ class DelegateFrame(NpsFrame):
 
 ### `SyncFrame` (0x42)
 
-Synchronisation barrier.
+同步屏障。
 
 ```python
 @dataclass(frozen=True)
 class SyncFrame(NpsFrame):
     task_id:      str
     sync_id:      str
-    wait_for:     tuple[str, ...]                   # subtask IDs
-    min_required: int = 0                           # 0 = all
+    wait_for:     tuple[str, ...]                   # 子任务 ID
+    min_required: int = 0                           # 0 = 全部
     aggregate:    str = AggregateStrategy.MERGE
     timeout_ms:   int | None = None
 ```
 
-`min_required = K, len(wait_for) = N` → classic K-of-N fan-in.
+`min_required = K, len(wait_for) = N` → 经典的 K-of-N fan-in。
 
 ### `AlignStreamFrame` (0x43)
 
-Directed result stream flowing from worker back to orchestrator.
+从 worker 回流到编排器的定向结果流。
 
 ```python
 @dataclass(frozen=True)
@@ -263,9 +261,8 @@ class AlignStreamFrame(NpsFrame):
     error:        StreamError | None = None
 ```
 
-- `seq` is strictly monotonic within a stream.
-- `error` non-null marks a terminal failure; `is_final` MUST be `True` in that
-  case.
+- `seq` 在流内严格单调。
+- `error` 非空标记终态失败；此时 `is_final` **必须**为 `True`。
 
 ### `StreamError`
 
@@ -284,7 +281,7 @@ class StreamError:
 
 ## `NopClient`
 
-Async HTTP client for talking to a NOP Gateway Node.
+面向 NOP Gateway Node 的异步 HTTP 客户端。
 
 ```python
 class NopClient:
@@ -315,31 +312,30 @@ class NopClient:
 
 ### `submit(frame) -> str`
 
-POST the `TaskFrame` to `{base_url}/task`. Returns the server-side `task_id`.
+将 `TaskFrame` POST 到 `{base_url}/task`。返回服务端的 `task_id`。
 
 ### `get_status(task_id) -> NopTaskStatus`
 
-GET `{base_url}/task/{task_id}`; decodes into `NopTaskStatus`.
+GET `{base_url}/task/{task_id}`；解码为 `NopTaskStatus`。
 
 ### `cancel(task_id)`
 
-POST to `{base_url}/task/{task_id}/cancel`.
+POST 到 `{base_url}/task/{task_id}/cancel`。
 
 ### `wait(task_id, poll_interval, timeout) -> NopTaskStatus`
 
-Poll `get_status` every `poll_interval` seconds until the task reaches a
-terminal state (`COMPLETED`, `FAILED`, `CANCELLED`) or `timeout` elapses —
-the latter raises `asyncio.TimeoutError`.
+每 `poll_interval` 秒轮询一次 `get_status`，直到任务到达终态
+（`COMPLETED`、`FAILED`、`CANCELLED`）或超过 `timeout` ——
+后者抛 `asyncio.TimeoutError`。
 
-### Ownership
+### 所有权
 
-Same rule as `NwpClient`: if you pass your own `http_client`, you own it; if
-the constructor creates one, the client owns and closes it in `__aexit__` /
-`close()`.
+与 `NwpClient` 相同：若你传入自己的 `http_client`，所有权归你；
+若构造函数内部创建，客户端在 `__aexit__` / `close()` 时拥有并关闭。
 
 ### `NopTaskStatus`
 
-Parsed status response. All properties are read-only views over the raw dict.
+解析后的状态响应。所有属性都是原始 dict 的只读视图。
 
 ```python
 class NopTaskStatus:
@@ -365,7 +361,7 @@ class NopTaskStatus:
 
 ---
 
-## End-to-end example
+## 端到端示例
 
 ```python
 import asyncio

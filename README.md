@@ -1,3 +1,5 @@
+English | [中文版](./README.cn.md)
+
 # NPS Python SDK (`nps-lib`)
 
 [![PyPI](https://img.shields.io/pypi/v/nps-lib)](https://pypi.org/project/nps-lib/)

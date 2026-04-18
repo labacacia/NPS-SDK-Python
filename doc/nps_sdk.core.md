@@ -1,3 +1,5 @@
+English | [中文版](./nps_sdk.core.cn.md)
+
 # `nps_sdk.core` — Class and Method Reference
 
 > Root module: `nps_sdk.core`

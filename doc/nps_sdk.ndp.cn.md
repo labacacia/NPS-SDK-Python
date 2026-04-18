@@ -1,35 +1,35 @@
-English | [中文版](./nps_sdk.ndp.cn.md)
+[English Version](./nps_sdk.ndp.md) | 中文版
 
-# `nps_sdk.ndp` — Class and Method Reference
+# `nps_sdk.ndp` — 类与方法参考
 
-> Root module: `nps_sdk.ndp`
-> Spec: [NPS-4 NDP v0.2](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-4-NDP.md)
+> 根模块：`nps_sdk.ndp`
+> 规范：[NPS-4 NDP v0.2](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-4-NDP.md)
 
-NDP is the discovery layer — the NPS analogue of DNS. This module provides the
-three NDP frame types, a thread-safe in-memory registry with lazy TTL eviction,
-and an announce signature validator backed by `NipIdentity`.
+NDP 是发现层 —— NPS 对应 DNS 的组件。本模块提供三个 NDP
+帧类型、一个带惰性 TTL 过期的线程安全内存注册表，以及
+由 `NipIdentity` 支持的 announce 签名校验器。
 
 ---
 
-## Table of contents
+## 目录
 
-- [Supporting dataclasses](#supporting-dataclasses)
+- [辅助 dataclass](#辅助-dataclass)
   - [`NdpAddress`](#ndpaddress)
   - [`NdpResolveResult`](#ndpresolveresult)
   - [`NdpGraphNode`](#ndpgraphnode)
-- [Frames](#frames)
+- [帧](#帧)
   - [`AnnounceFrame` (0x30)](#announceframe-0x30)
   - [`ResolveFrame` (0x31)](#resolveframe-0x31)
   - [`GraphFrame` (0x32)](#graphframe-0x32)
 - [`InMemoryNdpRegistry`](#inmemoryndpregistry)
-- [Validator](#validator)
+- [校验器](#校验器)
   - [`NdpAnnounceValidator`](#ndpannouncevalidator)
   - [`NdpAnnounceResult`](#ndpannounceresult)
-- [End-to-end example](#end-to-end-example)
+- [端到端示例](#端到端示例)
 
 ---
 
-## Supporting dataclasses
+## 辅助 dataclass
 
 ### `NdpAddress`
 
@@ -52,7 +52,7 @@ class NdpAddress:
 class NdpResolveResult:
     host:             str
     port:             int
-    ttl:              int                  # seconds
+    ttl:              int                  # 秒
     cert_fingerprint: str | None = None    # "sha256:{hex}"
 
     def to_dict(self) -> dict[str, Any]
@@ -77,11 +77,11 @@ class NdpGraphNode:
 
 ---
 
-## Frames
+## 帧
 
 ### `AnnounceFrame` (0x30)
 
-Publishes a node's physical reachability and TTL (NPS-4 §3.1).
+发布节点的物理可达性与 TTL（NPS-4 §3.1）。
 
 ```python
 @dataclass(frozen=True)
@@ -89,7 +89,7 @@ class AnnounceFrame(NpsFrame):
     nid:          str
     addresses:    tuple[NdpAddress, ...]
     capabilities: tuple[str, ...]
-    ttl:          int                         # 0 = orderly shutdown
+    ttl:          int                         # 0 = 有序下线
     timestamp:    str                         # ISO 8601 UTC
     signature:    str                         # "ed25519:{base64url}"
     node_type:    str | None = None
@@ -97,51 +97,48 @@ class AnnounceFrame(NpsFrame):
     def unsigned_dict(self) -> dict[str, Any]
 ```
 
-Signing (NPS-4 §3.1):
+签名流程（NPS-4 §3.1）：
 
-1. Call `frame.unsigned_dict()` — this strips `signature`.
-2. Sign with `NipIdentity.sign(dict)` using the NID's own private key (the same
-   key that backs its `IdentFrame`).
-3. `ttl = 0` MUST be signed and published before orderly shutdown so
-   subscribers evict the entry.
+1. 调用 `frame.unsigned_dict()` —— 此方法剥离 `signature`。
+2. 用 `NipIdentity.sign(dict)` 以该 NID 自己的私钥签名（与其
+   `IdentFrame` 所用相同密钥）。
+3. `ttl = 0` **必须**在有序下线前签名并发布，以便订阅者清除条目。
 
 ### `ResolveFrame` (0x31)
 
-Request/response envelope for resolving an `nwp://` URL.
+解析 `nwp://` URL 的请求/响应信封。
 
 ```python
 @dataclass(frozen=True)
 class ResolveFrame(NpsFrame):
     target:        str                        # "nwp://api.example.com/products"
     requester_nid: str | None = None
-    resolved:      NdpResolveResult | None = None   # populated on response
+    resolved:      NdpResolveResult | None = None   # 响应时填充
 ```
 
-JSON is the preferred tier for resolve traffic — it's low-volume and
-human-debugged.
+Resolve 流量首选 JSON tier —— 量小且需要人类调试。
 
 ### `GraphFrame` (0x32)
 
-Topology sync between registries.
+注册表之间的拓扑同步。
 
 ```python
 @dataclass(frozen=True)
 class GraphFrame(NpsFrame):
-    seq:          int                          # strictly monotonic per publisher
+    seq:          int                          # 每个发布者严格单调
     initial_sync: bool
-    nodes:        tuple[NdpGraphNode, ...] | None = None   # full snapshot
+    nodes:        tuple[NdpGraphNode, ...] | None = None   # 全量快照
     patch:        Any                         = None       # RFC 6902 JSON Patch
 ```
 
-Gaps in `seq` MUST trigger a re-sync request signalled with
-`NDP-GRAPH-SEQ-GAP`.
+`seq` 跳号**必须**触发重新同步请求，信号为 `NDP-GRAPH-SEQ-GAP`。
 
 ---
 
 ## `InMemoryNdpRegistry`
 
-Thread-safe, TTL-evicting registry. Expiry is evaluated **lazily** on every
-read — no background timer.
+线程安全、按 TTL 过期的注册表。过期是在每次读取时**惰性**
+评估的 —— 没有后台定时器。
 
 ```python
 class InMemoryNdpRegistry:
@@ -155,49 +152,46 @@ class InMemoryNdpRegistry:
     @staticmethod
     def nwp_target_matches_nid(nid: str, target: str) -> bool
 
-    # For deterministic unit tests
+    # 用于确定性单元测试
     clock: Callable[[], float]
 ```
 
-### Behaviour
+### 行为
 
-- **`announce(frame)`** — `frame.ttl == 0` immediately evicts the NID;
-  otherwise the entry is inserted (or refreshed) with an absolute expiry
-  of `clock() + ttl`.
-- **`resolve(target)`** — scans currently-live entries for the first whose NID
-  "covers" `target` (see below) and returns the first advertised address in
-  that announcement, wrapped in `NdpResolveResult`. Expired entries are
-  purged during the scan.
-- **`get_all()`** — snapshot of all currently-live announcements.
-- **`get_by_nid(nid)`** — exact lookup, with on-demand purge.
-- **`clock`** — replace with a monotonic stub in tests:
-  `registry.clock = lambda: 1000.0`.
+- **`announce(frame)`** —— `frame.ttl == 0` 立即清除该 NID；
+  否则以绝对过期 `clock() + ttl` 插入（或刷新）条目。
+- **`resolve(target)`** —— 扫描当前活跃条目，找到第一个 NID
+  "覆盖" `target` 的项（见下），返回该 announcement 中第一个
+  广告地址，包装为 `NdpResolveResult`。扫描期间清除已过期条目。
+- **`get_all()`** —— 当前所有活跃 announcement 的快照。
+- **`get_by_nid(nid)`** —— 精确查询，按需清理。
+- **`clock`** —— 在测试中替换为单调 stub：
+  `registry.clock = lambda: 1000.0`。
 
 ### `nwp_target_matches_nid(nid, target)` *(staticmethod)*
 
-The NID ↔ target covering rule:
+NID ↔ target 覆盖规则：
 
 ```
 NID:    urn:nps:node:{authority}:{name}
 Target: nwp://{authority}/{name}[/subpath]
 ```
 
-A node NID covers a target when:
+节点 NID 覆盖某 target 的条件：
 
-1. The target scheme is `nwp://`.
-2. The NID authority equals the target authority (case-insensitive).
-3. The target path starts with `/{name}` and either ends there or continues
-   with `/…`.
+1. Target scheme 为 `nwp://`。
+2. NID authority 等于 target authority（不区分大小写）。
+3. Target path 以 `/{name}` 开头，且在此结束或以 `/…` 继续。
 
-Returns `False` for malformed inputs rather than raising.
+输入格式错误时返回 `False` 而非抛异常。
 
 ---
 
-## Validator
+## 校验器
 
 ### `NdpAnnounceValidator`
 
-Verifies an `AnnounceFrame` signature using a registered Ed25519 public key.
+使用已注册的 Ed25519 公钥校验 `AnnounceFrame` 的签名。
 
 ```python
 class NdpAnnounceValidator:
@@ -207,24 +201,24 @@ class NdpAnnounceValidator:
     def remove_public_key(self, nid: str) -> None
 
     @property
-    def known_public_keys(self) -> dict[str, str]    # read-only snapshot
+    def known_public_keys(self) -> dict[str, str]    # 只读快照
 
     def validate(self, frame: AnnounceFrame) -> NdpAnnounceResult
 ```
 
-`validate` (NPS-4 §7.1):
+`validate`（NPS-4 §7.1）：
 
-1. Looks up `frame.nid` in the registered keys. Missing →
-   `NdpAnnounceResult.fail("NDP-ANNOUNCE-NID-MISMATCH", …)`. The expected
-   workflow is: verify the announcer's `IdentFrame` first, then register its
-   `pub_key` here.
-2. Builds the signing payload via `frame.unsigned_dict()`.
-3. Calls `NipIdentity.verify_signature(pub_key, payload, frame.signature)`.
-4. Returns `NdpAnnounceResult.ok()` on success, or
-   `NdpAnnounceResult.fail("NDP-ANNOUNCE-SIGNATURE-INVALID", …)` on failure.
+1. 在已注册密钥中查找 `frame.nid`。缺失 →
+   `NdpAnnounceResult.fail("NDP-ANNOUNCE-NID-MISMATCH", …)`。
+   期望的工作流程：先校验广告方的 `IdentFrame`，然后将其
+   `pub_key` 注册到此处。
+2. 通过 `frame.unsigned_dict()` 构建签名 payload。
+3. 调用 `NipIdentity.verify_signature(pub_key, payload, frame.signature)`。
+4. 成功返回 `NdpAnnounceResult.ok()`；失败返回
+   `NdpAnnounceResult.fail("NDP-ANNOUNCE-SIGNATURE-INVALID", …)`。
 
-The encoded key MUST use the `ed25519:{base64url}` form produced by
-`NipIdentity.pub_key_string`.
+编码后的密钥**必须**使用 `NipIdentity.pub_key_string` 产生的
+`ed25519:{base64url}` 形式。
 
 ### `NdpAnnounceResult`
 
@@ -243,7 +237,7 @@ class NdpAnnounceResult:
 
 ---
 
-## End-to-end example
+## 端到端示例
 
 ```python
 import dataclasses, datetime
@@ -253,11 +247,11 @@ from nps_sdk.ndp import (
     InMemoryNdpRegistry, NdpAnnounceValidator,
 )
 
-# 1) Publisher generates identity
+# 1) 发布方生成身份
 identity = NipIdentity.generate("/secure/products.key", passphrase="…")
 nid      = "urn:nps:node:api.example.com:products"
 
-# 2) Build and sign the announce
+# 2) 构造并签名 announce
 unsigned = AnnounceFrame(
     nid          = nid,
     node_type    = "memory",
@@ -269,7 +263,7 @@ unsigned = AnnounceFrame(
 )
 signed = dataclasses.replace(unsigned, signature=identity.sign(unsigned.unsigned_dict()))
 
-# 3) Validate and announce
+# 3) 校验并广告
 validator = NdpAnnounceValidator()
 validator.register_public_key(nid, identity.pub_key_string)
 assert validator.validate(signed).is_valid
@@ -277,7 +271,7 @@ assert validator.validate(signed).is_valid
 registry = InMemoryNdpRegistry()
 registry.announce(signed)
 
-# 4) Consumer resolves later
+# 4) 消费方稍后解析
 resolved = registry.resolve("nwp://api.example.com/products/items/42")
 # → NdpResolveResult(host="10.0.0.5", port=17433, ttl=300)
 ```
