@@ -1,31 +1,31 @@
-English | [中文版](./nps_sdk.nwp.cn.md)
+[English Version](./nps_sdk.nwp.md) | 中文版
 
-# `nps_sdk.nwp` — Class and Method Reference
+# `nps_sdk.nwp` — 类与方法参考
 
-> Root module: `nps_sdk.nwp`
-> Spec: [NPS-2 NWP v0.4](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-2-NWP.md)
+> 根模块：`nps_sdk.nwp`
+> 规范：[NPS-2 NWP v0.4](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-2-NWP.md)
 
-NWP is the HTTP-of-AI. This module ships the two NWP frames (`QueryFrame`,
-`ActionFrame`), the async `NwpClient`, and supporting dataclasses for query
-ordering, vector search, and async action responses.
+NWP 是 AI 的 HTTP。本模块提供两个 NWP 帧（`QueryFrame`、
+`ActionFrame`）、异步 `NwpClient`，以及用于查询排序、向量
+搜索和异步 action 响应的辅助 dataclass。
 
 ---
 
-## Table of contents
+## 目录
 
-- [Supporting dataclasses](#supporting-dataclasses)
+- [辅助 dataclass](#辅助-dataclass)
   - [`QueryOrderClause`](#queryorderclause)
   - [`VectorSearchOptions`](#vectorsearchoptions)
   - [`AsyncActionResponse`](#asyncactionresponse)
-- [Frames](#frames)
+- [帧](#帧)
   - [`QueryFrame` (0x10)](#queryframe-0x10)
   - [`ActionFrame` (0x11)](#actionframe-0x11)
 - [`NwpClient`](#nwpclient)
-- [End-to-end example](#end-to-end-example)
+- [端到端示例](#端到端示例)
 
 ---
 
-## Supporting dataclasses
+## 辅助 dataclass
 
 ### `QueryOrderClause`
 
@@ -56,8 +56,7 @@ class VectorSearchOptions:
     def from_dict(cls, data: dict[str, Any]) -> "VectorSearchOptions"
 ```
 
-Attached to a `QueryFrame.vector_search` when the target Memory Node advertises
-`nwp:vector`.
+当目标 Memory Node 通告 `nwp:vector` 时附加到 `QueryFrame.vector_search`。
 
 ### `AsyncActionResponse`
 
@@ -73,16 +72,16 @@ class AsyncActionResponse:
     def from_dict(cls, data: dict[str, Any]) -> "AsyncActionResponse"
 ```
 
-Returned by `NwpClient.invoke` when the `ActionFrame` was submitted with
-`async_=True`. Poll `poll_url` to observe progress.
+当 `ActionFrame` 以 `async_=True` 提交时，`NwpClient.invoke` 返回此对象。
+轮询 `poll_url` 观察进度。
 
 ---
 
-## Frames
+## 帧
 
 ### `QueryFrame` (0x10)
 
-Structured read against a Memory Node.
+针对 Memory Node 的结构化读取。
 
 ```python
 @dataclass(frozen=True)
@@ -96,17 +95,16 @@ class QueryFrame(NpsFrame):
     vector_search: VectorSearchOptions | None = None
 ```
 
-- `anchor_ref` MAY point at an already-cached `AnchorFrame`; nodes use it to
-  omit the schema from the response `CapsFrame`.
-- `filter` is a free-form expression (typically a dict) as described by the
-  node's `.nwm.json` manifest.
-- `fields` is a projection list; `None` means "all fields in the schema".
-- `cursor` is the opaque pagination cursor previously returned in
-  `CapsFrame.next_cursor`.
+- `anchor_ref` **可以**指向已缓存的 `AnchorFrame`；节点据此可
+  在响应的 `CapsFrame` 中省略 schema。
+- `filter` 是自由格式表达式（通常是 dict），由节点的 `.nwm.json`
+  manifest 描述。
+- `fields` 是投影列表；`None` 表示"schema 中全部字段"。
+- `cursor` 是先前 `CapsFrame.next_cursor` 返回的不透明分页游标。
 
 ### `ActionFrame` (0x11)
 
-Operation invocation against an Action / Complex / Gateway Node.
+针对 Action / Complex / Gateway Node 的操作调用。
 
 ```python
 @dataclass(frozen=True)
@@ -115,21 +113,21 @@ class ActionFrame(NpsFrame):
     params:          Any         = None
     idempotency_key: str | None = None
     timeout_ms:      int         = 5000
-    async_:          bool        = False   # serialised as "async" on the wire
+    async_:          bool        = False   # 线路上序列化为 "async"
 ```
 
-- `action_id` is the identifier declared under the Action Node's
-  `.nwm.json` → `endpoints.actions[].id`.
-- `idempotency_key` — if present, the node MUST deduplicate the call within
-  its replay window.
-- `async_=True` asks the node for a deferred response; the client receives
-  an `AsyncActionResponse` instead of the synchronous result.
+- `action_id` 是 Action Node 在 `.nwm.json` → `endpoints.actions[].id`
+  下声明的标识。
+- `idempotency_key` —— 若存在，节点**必须**在其重放窗口内对调用
+  去重。
+- `async_=True` 请求节点延迟响应；客户端收到 `AsyncActionResponse`
+  而非同步结果。
 
 ---
 
 ## `NwpClient`
 
-Async HTTP client for talking to NWP nodes.
+面向 NWP 节点的异步 HTTP 客户端。
 
 ```python
 class NwpClient:
@@ -147,40 +145,40 @@ class NwpClient:
     async def close(self) -> None
 ```
 
-Ownership: if you pass your own `http_client`, the SDK will **not** close it
-on `__aexit__` / `close`; if it creates one internally, it owns and closes it.
+所有权：若你传入自己的 `http_client`，SDK 在 `__aexit__` /
+`close` 时**不会**关闭它；若内部创建，则拥有并负责关闭。
 
-If you omit `registry`, the client uses `FrameRegistry.create_full()`.
+省略 `registry` 时，客户端使用 `FrameRegistry.create_full()`。
 
-### Methods
+### 方法
 
 #### `async send_anchor(frame: AnchorFrame) -> None`
 
-POST the `AnchorFrame` to `{base_url}/anchor`. Nodes cache the schema and
-acknowledge with HTTP 204. Raises `httpx.HTTPStatusError` on failure.
+将 `AnchorFrame` POST 到 `{base_url}/anchor`。节点缓存 schema
+并以 HTTP 204 确认。失败抛 `httpx.HTTPStatusError`。
 
 #### `async query(frame: QueryFrame) -> CapsFrame`
 
-POST `QueryFrame` to `{base_url}/query`, decodes the response as a `CapsFrame`.
+将 `QueryFrame` POST 到 `{base_url}/query`，将响应解码为 `CapsFrame`。
 
 #### `async stream(frame: QueryFrame) -> AsyncIterator[StreamFrame]`
 
-POST `QueryFrame` to `{base_url}/stream` and yield each received
-`StreamFrame` as it arrives. Framing: newline-delimited wire messages
-(NPS-2 §5.4). Consume with `async for`.
+将 `QueryFrame` POST 到 `{base_url}/stream`，在每个 `StreamFrame`
+到达时将其 yield。帧边界：换行分隔的线路消息（NPS-2 §5.4）。
+用 `async for` 消费。
 
 #### `async invoke(frame: ActionFrame) -> Any`
 
-POST `ActionFrame` to `{base_url}/invoke`.
+将 `ActionFrame` POST 到 `{base_url}/invoke`。
 
-- `frame.async_ == False` → returns the JSON-decoded response body.
-- `frame.async_ == True`  → returns `AsyncActionResponse`.
+- `frame.async_ == False` → 返回 JSON 解码后的响应体。
+- `frame.async_ == True`  → 返回 `AsyncActionResponse`。
 
-Raises `httpx.HTTPStatusError` on non-2xx responses.
+非 2xx 响应抛 `httpx.HTTPStatusError`。
 
 ---
 
-## End-to-end example
+## 端到端示例
 
 ```python
 import asyncio
@@ -194,7 +192,7 @@ from nps_sdk.nwp  import (
 
 async def main() -> None:
     async with NwpClient("https://products.example.com", default_tier=EncodingTier.MSGPACK) as nwp:
-        # 1) Upload an anchor once
+        # 1) 上传锚点一次
         schema = FrameSchema(fields=(
             SchemaField(name="id",    type="uint64"),
             SchemaField(name="price", type="decimal", semantic="commerce.price.usd"),
@@ -202,7 +200,7 @@ async def main() -> None:
         anchor = AnchorFrame(anchor_id="sha256:…", schema=schema, ttl=3600)
         await nwp.send_anchor(anchor)
 
-        # 2) Query a page
+        # 2) 分页查询
         caps = await nwp.query(QueryFrame(
             anchor_ref=anchor.anchor_id,
             filter={"price": {"$lt": "100.00"}},
@@ -211,14 +209,14 @@ async def main() -> None:
         ))
         print(caps.count, "rows, cursor:", caps.next_cursor)
 
-        # 3) Stream the full set
+        # 3) 流式获取完整集合
         async for chunk in nwp.stream(QueryFrame(anchor_ref=anchor.anchor_id, limit=200)):
             for row in chunk.data:
                 ...
             if chunk.is_last:
                 break
 
-        # 4) Fire an async action
+        # 4) 发起异步 action
         resp = await nwp.invoke(ActionFrame(
             action_id="restock",
             params={"sku": "sku-4242", "qty": 100},
