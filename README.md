@@ -1,10 +1,10 @@
 English | [中文版](./README.cn.md)
 
-# NPS Python SDK (`nps-sdk`)
+# NPS Python SDK (`nps-lib`)
 
 Python client library for the **Neural Protocol Suite (NPS)** — a complete internet protocol stack designed for AI agents and models.
 
-PyPI package: `nps-sdk` | Python namespace: `nps_sdk`
+PyPI package: `nps-lib` | Python namespace: `nps_sdk`
 
 ## Status
 
@@ -20,13 +20,13 @@ Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions,
 ## Installation
 
 ```bash
-pip install nps-sdk
+pip install nps-lib
 ```
 
 For development:
 
 ```bash
-pip install "nps-sdk[dev]"
+pip install "nps-lib[dev]"
 ```
 
 ## Modules

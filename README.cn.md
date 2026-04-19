@@ -1,10 +1,10 @@
 [English Version](./README.md) | 中文版
 
-# NPS Python SDK (`nps-sdk`)
+# NPS Python SDK (`nps-lib`)
 
 面向 **Neural Protocol Suite (NPS)** 的 Python 客户端库 —— 为 AI Agent 与模型设计的完整互联网协议栈。
 
-PyPI 包名：`nps-sdk` | Python 命名空间：`nps_sdk`
+PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 
 ## 状态
 
@@ -20,13 +20,13 @@ PyPI 包名：`nps-sdk` | Python 命名空间：`nps_sdk`
 ## 安装
 
 ```bash
-pip install nps-sdk
+pip install nps-lib
 ```
 
 开发模式：
 
 ```bash
-pip install "nps-sdk[dev]"
+pip install "nps-lib[dev]"
 ```
 
 ## 模块
