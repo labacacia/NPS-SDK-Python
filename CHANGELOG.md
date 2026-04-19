@@ -1,6 +1,6 @@
 English | [中文版](./CHANGELOG.cn.md)
 
-# Changelog — Python SDK (`nps-sdk`)
+# Changelog — Python SDK (`nps-lib`)
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -12,6 +12,7 @@ Until NPS reaches v1.0 stable, every repository in the suite is synchronized to 
 
 ### Changed
 
+- **PyPI distribution renamed from `nps-sdk` to `nps-lib`.** The `nps-sdk` name on PyPI is owned by an unrelated party (Ingenico); LabAcacia ships under `nps-lib` instead. Import module `nps_sdk` is unchanged, so existing `import nps_sdk` code works without modification — only `pip install` and `pyproject.toml` dependency declarations need updating.
 - Version bump to `1.0.0-alpha.2` for suite-wide synchronization. No functional changes beyond version alignment.
 - 162 tests, 97% coverage green.
 
