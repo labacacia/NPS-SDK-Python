@@ -5,6 +5,8 @@
 NPS NIP — Neural Identity Protocol frame dataclasses.
 
   IdentFrame   0x20 — Agent identity declaration and certificate carrier.
+  TrustFrame   0x21 — Cross-CA trust chain and capability grant (frame-only;
+                      OSS library does not enforce trust chain validation).
   RevokeFrame  0x22 — Certificate revocation.
 """
 
@@ -108,6 +110,62 @@ class IdentFrame(NpsFrame):
             serial=data["serial"],
             signature=data["signature"],
             metadata=meta,
+        )
+
+    def unsigned_dict(self) -> dict[str, Any]:
+        """Return the dict representation without the 'signature' field, for signing."""
+        d = self.to_dict()
+        d.pop("signature", None)
+        return d
+
+
+# ── TrustFrame (0x21) ────────────────────────────────────────────────────────
+
+@dataclasses.dataclass(frozen=True)
+class TrustFrame(NpsFrame):
+    """
+    Cross-CA trust chain and capability grant frame (NPS-3 §5.2).
+
+    ⚠️ Business logic for trust chain validation is a commercial NPS Cloud
+    feature. This class provides the frame definition for codec use; trust
+    chain enforcement is not implemented in the OSS library.
+    """
+
+    grantor_nid: str
+    grantee_ca:  str
+    trust_scope: tuple[str, ...]
+    nodes:       tuple[str, ...]
+    expires_at:  str
+    signature:   str
+
+    @property
+    def frame_type(self) -> FrameType:
+        return FrameType.TRUST
+
+    @property
+    def preferred_tier(self) -> EncodingTier:
+        return EncodingTier.MSGPACK
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "frame":       "0x21",
+            "grantor_nid": self.grantor_nid,
+            "grantee_ca":  self.grantee_ca,
+            "trust_scope": list(self.trust_scope),
+            "nodes":       list(self.nodes),
+            "expires_at":  self.expires_at,
+            "signature":   self.signature,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "TrustFrame":
+        return cls(
+            grantor_nid=data["grantor_nid"],
+            grantee_ca=data["grantee_ca"],
+            trust_scope=tuple(data.get("trust_scope", [])),
+            nodes=tuple(data.get("nodes", [])),
+            expires_at=data["expires_at"],
+            signature=data["signature"],
         )
 
     def unsigned_dict(self) -> dict[str, Any]:

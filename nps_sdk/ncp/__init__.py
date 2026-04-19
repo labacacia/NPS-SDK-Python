@@ -11,6 +11,7 @@ from nps_sdk.ncp.frames import (
     DiffFrame,
     StreamFrame,
     CapsFrame,
+    HelloFrame,
     ErrorFrame,
 )
 
@@ -22,5 +23,6 @@ __all__ = [
     "DiffFrame",
     "StreamFrame",
     "CapsFrame",
+    "HelloFrame",
     "ErrorFrame",
 ]

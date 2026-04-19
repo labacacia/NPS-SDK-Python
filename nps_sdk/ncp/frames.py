@@ -9,6 +9,7 @@ Frame hex codes (NPS-1 §4):
   DiffFrame    0x02 — incremental RFC 6902 JSON Patch.
   StreamFrame  0x03 — streaming chunk with back-pressure.
   CapsFrame    0x04 — full response capsule referencing an anchor.
+  HelloFrame   0x06 — native-mode handshake (not used in HTTP mode).
   ErrorFrame   0xFE — unified error frame (all protocol layers).
 """
 
@@ -274,6 +275,72 @@ class CapsFrame(NpsFrame):
             token_est=data.get("token_est"),
             cached=data.get("cached"),
             tokenizer_used=data.get("tokenizer_used"),
+        )
+
+
+# ── HelloFrame (0x06) ────────────────────────────────────────────────────────
+
+@dataclasses.dataclass(frozen=True)
+class HelloFrame(NpsFrame):
+    """
+    Native-mode client handshake frame (NPS-1 §4.6).
+
+    The Agent MUST send this as the very first frame after opening a TCP/QUIC
+    connection; the Node replies with a CapsFrame. Not used in HTTP mode.
+
+    Preferred encoding is Tier-1 JSON because the encoding has not yet been
+    negotiated at handshake time.
+    """
+
+    nps_version:            str
+    supported_encodings:    tuple[str, ...]
+    supported_protocols:    tuple[str, ...]
+    min_version:            str | None              = None
+    agent_id:               str | None              = None
+    max_frame_payload:      int                     = 0xFFFF  # 65 535 bytes
+    ext_support:            bool                    = False
+    max_concurrent_streams: int                     = 32
+    e2e_enc_algorithms:     tuple[str, ...] | None  = None
+
+    @property
+    def frame_type(self) -> FrameType:
+        return FrameType.HELLO
+
+    @property
+    def preferred_tier(self) -> EncodingTier:
+        return EncodingTier.JSON
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "nps_version":            self.nps_version,
+            "supported_encodings":    list(self.supported_encodings),
+            "supported_protocols":    list(self.supported_protocols),
+            "max_frame_payload":      self.max_frame_payload,
+            "ext_support":            self.ext_support,
+            "max_concurrent_streams": self.max_concurrent_streams,
+        }
+        if self.min_version        is not None: d["min_version"]        = self.min_version
+        if self.agent_id           is not None: d["agent_id"]           = self.agent_id
+        if self.e2e_enc_algorithms is not None:
+            d["e2e_enc_algorithms"] = list(self.e2e_enc_algorithms)
+        return d
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "HelloFrame":
+        return cls(
+            nps_version=data["nps_version"],
+            supported_encodings=tuple(data.get("supported_encodings", [])),
+            supported_protocols=tuple(data.get("supported_protocols", [])),
+            min_version=data.get("min_version"),
+            agent_id=data.get("agent_id"),
+            max_frame_payload=int(data.get("max_frame_payload", 0xFFFF)),
+            ext_support=bool(data.get("ext_support", False)),
+            max_concurrent_streams=int(data.get("max_concurrent_streams", 32)),
+            e2e_enc_algorithms=(
+                tuple(data["e2e_enc_algorithms"])
+                if data.get("e2e_enc_algorithms") is not None
+                else None
+            ),
         )
 
 

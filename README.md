@@ -1,63 +1,44 @@
 English | [中文版](./README.cn.md)
 
-# NPS Python SDK (`nps-lib`)
+# NPS Python SDK (`nps-sdk`)
 
-[![PyPI](https://img.shields.io/pypi/v/nps-lib)](https://pypi.org/project/nps-lib/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](./LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11%2B-3776AB)](https://www.python.org/)
+Python client library for the **Neural Protocol Suite (NPS)** — a complete internet protocol stack designed for AI agents and models.
 
-Async Python SDK for the **Neural Protocol Suite (NPS)** — a complete internet protocol stack purpose-built for AI Agents and models.
-
-PyPI package: **`nps-lib`** · import namespace: `nps_sdk`
-
----
-
-## NPS Repositories
-
-| Repo | Role | Language |
-|------|------|----------|
-| [NPS-Release](https://github.com/labacacia/NPS-Release) | Protocol specifications (authoritative) | Markdown / YAML |
-| [NPS-sdk-dotnet](https://github.com/labacacia/NPS-sdk-dotnet) | Reference implementation | C# / .NET 10 |
-| **[NPS-sdk-py](https://github.com/labacacia/NPS-sdk-py)** (this repo) | Async Python SDK | Python 3.11+ |
-| [NPS-sdk-ts](https://github.com/labacacia/NPS-sdk-ts) | Node/browser SDK | TypeScript |
-| [NPS-sdk-java](https://github.com/labacacia/NPS-sdk-java) | JVM SDK | Java 21+ |
-| [NPS-sdk-rust](https://github.com/labacacia/NPS-sdk-rust) | Async SDK | Rust stable |
-| [NPS-sdk-go](https://github.com/labacacia/NPS-sdk-go) | Go SDK | Go 1.23+ |
-
----
+PyPI package: `nps-sdk` | Python namespace: `nps_sdk`
 
 ## Status
 
-**v1.0.0-alpha.1 — Phase 1 release**
+**v0.1.0 — Phase 1 initial release (Alpha)**
 
-Covers all five NPS protocols: NCP + NWP + NIP + NDP + NOP. 162 tests, **97 % coverage**.
+Covers NCP + NWP frames and async client, NIP identity management.
 
 ## Requirements
 
 - Python 3.11+
-- Runtime dependencies: `msgpack`, `httpx`, `cryptography`
+- Dependencies: `msgpack`, `httpx`, `cryptography`
 
 ## Installation
 
 ```bash
-pip install nps-lib
-# with test/dev extras
-pip install "nps-lib[dev]"
+pip install nps-sdk
 ```
 
-## API Reference
+For development:
 
-Full class and method reference lives under [`doc/`](./doc/):
+```bash
+pip install "nps-sdk[dev]"
+```
 
-| Module | Description | Reference |
-|--------|-------------|-----------|
-| — | Package overview, install, quick-start | [`doc/overview.md`](./doc/overview.md) |
-| `nps_sdk.core` | Frame header, codec (Tier-1 JSON / Tier-2 MsgPack), anchor cache, exceptions | [`doc/nps_sdk.core.md`](./doc/nps_sdk.core.md) |
-| `nps_sdk.ncp`  | NCP frames: `AnchorFrame`, `DiffFrame`, `StreamFrame`, `CapsFrame`, `ErrorFrame` | [`doc/nps_sdk.ncp.md`](./doc/nps_sdk.ncp.md) |
-| `nps_sdk.nwp`  | NWP frames: `QueryFrame`, `ActionFrame`; async `NwpClient` | [`doc/nps_sdk.nwp.md`](./doc/nps_sdk.nwp.md) |
-| `nps_sdk.nip`  | NIP frames: `IdentFrame`, `RevokeFrame`; `NipIdentity` (Ed25519) | [`doc/nps_sdk.nip.md`](./doc/nps_sdk.nip.md) |
-| `nps_sdk.ndp`  | NDP frames + in-memory registry + announce validator | [`doc/nps_sdk.ndp.md`](./doc/nps_sdk.ndp.md) |
-| `nps_sdk.nop`  | NOP frames, DAG models, async orchestration client | [`doc/nps_sdk.nop.md`](./doc/nps_sdk.nop.md) |
+## Modules
+
+| Module | Description |
+|--------|-------------|
+| `nps_sdk.core` | Frame header, codec (Tier-1 JSON / Tier-2 MsgPack), anchor cache, exceptions |
+| `nps_sdk.ncp`  | NCP frames: AnchorFrame, DiffFrame, StreamFrame, CapsFrame, HelloFrame, ErrorFrame |
+| `nps_sdk.nwp`  | NWP frames: QueryFrame, ActionFrame; async `NwpClient` |
+| `nps_sdk.nip`  | NIP frames: IdentFrame, TrustFrame, RevokeFrame; `NipIdentity` (Ed25519 key management) |
+| `nps_sdk.ndp`  | NDP frames: AnnounceFrame, ResolveFrame, GraphFrame; in-memory registry + validator |
+| `nps_sdk.nop`  | NOP frames: TaskFrame, DelegateFrame, SyncFrame, AlignStreamFrame; async `NopClient` |
 
 ## Quick Start
 
@@ -68,25 +49,26 @@ from nps_sdk.core.codec import NpsFrameCodec
 from nps_sdk.core.registry import FrameRegistry
 from nps_sdk.ncp.frames import AnchorFrame, FrameSchema, SchemaField
 
-codec = NpsFrameCodec(FrameRegistry.create_default())
+registry = FrameRegistry.create_default()
+codec    = NpsFrameCodec(registry)
 
 schema = FrameSchema(fields=(
     SchemaField(name="id",    type="uint64"),
     SchemaField(name="price", type="decimal", semantic="commerce.price.usd"),
 ))
-frame = AnchorFrame(anchor_id="sha256:...", schema=schema)
+frame  = AnchorFrame(anchor_id="sha256:...", schema=schema)
 
-wire = codec.encode(frame)                  # Tier-2 MsgPack by default
-back = codec.decode(wire)                   # → AnchorFrame
+wire   = codec.encode(frame)           # bytes — Tier-2 MsgPack by default
+result = codec.decode(wire)            # → AnchorFrame
 ```
 
-### Anchor Cache
+### Anchor Cache (Schema Deduplication)
 
 ```python
 from nps_sdk.core.cache import AnchorFrameCache
 
-cache = AnchorFrameCache()
-anchor_id = cache.set(frame)                # returns canonical sha256 id
+cache     = AnchorFrameCache()
+anchor_id = cache.set(frame)           # stores; returns canonical sha256 anchor_id
 frame     = cache.get_required(anchor_id)
 ```
 
@@ -109,7 +91,7 @@ asyncio.run(main())
 ### Invoking an Action Node (async)
 
 ```python
-from nps_sdk.nwp import ActionFrame
+from nps_sdk.nwp import NwpClient, ActionFrame
 
 async with NwpClient("https://node.example.com") as client:
     result = await client.invoke(
@@ -117,89 +99,65 @@ async with NwpClient("https://node.example.com") as client:
     )
 ```
 
-### NIP Identity
+### NIP Identity Management
 
 ```python
 from nps_sdk.nip.identity import NipIdentity
 
-# Generate & encrypt (AES-256-GCM + PBKDF2)
+# Generate and save an encrypted Ed25519 keypair
 identity = NipIdentity.generate("ca.key", passphrase="my-secret")
 
 # Load from file
 identity = NipIdentity()
 identity.load("ca.key", passphrase="my-secret")
 
-# Sign / verify
+# Sign a NIP frame payload (canonical JSON, no 'signature' field)
 sig = identity.sign(ident_frame.unsigned_dict())
-ok  = NipIdentity.verify_signature(identity.pub_key_string, payload, sig)
-```
 
-### NDP — Announce & Resolve
-
-```python
-from nps_sdk.ndp import InMemoryNdpRegistry, NdpAnnounceValidator
-
-registry  = InMemoryNdpRegistry()
-validator = NdpAnnounceValidator()
-validator.register_public_key(nid, identity.pub_key_string)
-
-await registry.announce(frame)
-resolved = await registry.resolve("nwp://example.com/data")
-```
-
-### NOP — Submit & Wait
-
-```python
-from nps_sdk.nop import NopClient, TaskFrame
-
-async with NopClient("http://orchestrator.example.com") as client:
-    task_id = await client.submit(TaskFrame(task_id="job-1", dag=dag))
-    status  = await client.wait(task_id, timeout=30.0)
+# Verify
+ok = NipIdentity.verify_signature(identity.pub_key_string, payload, sig)
 ```
 
 ## Architecture
 
 ```
 nps_sdk/
-├── core/     # Wire primitives (FrameHeader, codec, cache, exceptions)
-├── ncp/      # NCP frames (0x01–0x0F)
-├── nwp/      # NWP frames (0x10–0x1F) + async HTTP client
-├── nip/      # NIP frames (0x20–0x2F) + Ed25519 identity
-├── ndp/      # NDP frames (0x30–0x3F) + registry + validator
-└── nop/      # NOP frames (0x40–0x4F) + DAG models + orchestration client
+├── core/          # Wire primitives (FrameHeader, codec, cache, exceptions)
+├── ncp/           # NCP frames (0x01–0x0F)
+├── nwp/           # NWP frames (0x10–0x1F) + async HTTP client
+└── nip/           # NIP frames (0x20–0x2F) + Ed25519 identity
 ```
 
-## Encoding Tiers
+### Frame Encoding Tiers
 
 | Tier | Value | Description |
 |------|-------|-------------|
-| Tier-1 JSON    | `0x00` | UTF-8 JSON. Development / compatibility |
-| Tier-2 MsgPack | `0x01` | MessagePack binary. ~60% smaller. **Production default** |
+| Tier-1 JSON    | `0x00` | UTF-8 JSON. Development / compatibility. |
+| Tier-2 MsgPack | `0x01` | MessagePack binary. ~60% smaller. **Production default.** |
 
-## NWP HTTP Overlay
+### NWP HTTP Overlay Mode
 
 `NwpClient` communicates via HTTP with `Content-Type: application/x-nps-frame`.
+Sub-paths per operation:
 
-| Operation | Path | Request | Response |
-|-----------|------|---------|----------|
-| Schema anchor | `POST /anchor` | `AnchorFrame` | `204 No Content` |
-| Structured query | `POST /query` | `QueryFrame` | `CapsFrame` |
-| Streaming query | `POST /stream` | `QueryFrame` | `StreamFrame` chunks |
-| Action invocation | `POST /invoke` | `ActionFrame` | raw result or `AsyncActionResponse` |
-
-## NIP CA Server
-
-A standalone NIP Certificate Authority server is bundled under [`nip-ca-server/`](./nip-ca-server/) — FastAPI, SQLite-backed, Docker-ready.
+| Operation | Path | Request Frame | Response Frame |
+|-----------|------|---------------|----------------|
+| Schema anchor | `POST /anchor` | AnchorFrame | 204 |
+| Structured query | `POST /query` | QueryFrame | CapsFrame |
+| Streaming query | `POST /stream` | QueryFrame | StreamFrame chunks |
+| Action invocation | `POST /invoke` | ActionFrame | raw result or AsyncActionResponse |
 
 ## Running Tests
 
 ```bash
-pytest                 # all tests + coverage report (fail under 90%)
+pytest                 # all tests + coverage report
 pytest -k test_nip     # NIP tests only
 ```
 
+Coverage target: ≥ 90 %.
+
 ## License
 
-Apache 2.0 — see [LICENSE](./LICENSE) and [NOTICE](./NOTICE).
+Apache 2.0 — see [LICENSE](../../LICENSE).
 
 Copyright 2026 INNO LOTUS PTY LTD

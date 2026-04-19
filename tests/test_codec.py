@@ -15,6 +15,7 @@ from nps_sdk.ncp.frames import (
     DiffFrame,
     ErrorFrame,
     FrameSchema,
+    HelloFrame,
     JsonPatchOperation,
     SchemaField,
     StreamFrame,
@@ -204,6 +205,68 @@ class TestErrorFrameCodec:
         out   = codec.decode(codec.encode(frame))
         assert out.message is None
         assert out.details is None
+
+
+# ── HelloFrame ────────────────────────────────────────────────────────────────
+
+class TestHelloFrameCodec:
+    def _make_frame(self) -> HelloFrame:
+        return HelloFrame(
+            nps_version="0.2",
+            supported_encodings=("tier-1", "tier-2"),
+            supported_protocols=("ncp", "nwp", "nip"),
+            min_version="0.1",
+            agent_id="urn:nps:agent:example.com:hello-1",
+            max_frame_payload=0xFFFF,
+            ext_support=True,
+            max_concurrent_streams=64,
+            e2e_enc_algorithms=("aes-256-gcm",),
+        )
+
+    def test_frame_type(self):
+        assert self._make_frame().frame_type == FrameType.HELLO
+
+    def test_preferred_tier_is_json(self):
+        # Encoding has not yet been negotiated at handshake time → JSON.
+        assert self._make_frame().preferred_tier == EncodingTier.JSON
+
+    def test_registry_resolves_hello(self, registry: FrameRegistry):
+        assert registry.resolve(FrameType.HELLO) is HelloFrame
+
+    def test_json_roundtrip(self, codec: NpsFrameCodec):
+        frame = self._make_frame()
+        wire  = codec.encode(frame)  # preferred_tier is JSON
+        out   = codec.decode(wire)
+        assert isinstance(out, HelloFrame)
+        assert out.nps_version            == "0.2"
+        assert out.supported_encodings    == ("tier-1", "tier-2")
+        assert out.supported_protocols    == ("ncp", "nwp", "nip")
+        assert out.min_version            == "0.1"
+        assert out.agent_id               == frame.agent_id
+        assert out.ext_support            is True
+        assert out.max_concurrent_streams == 64
+        assert out.e2e_enc_algorithms     == ("aes-256-gcm",)
+
+    def test_msgpack_roundtrip(self, codec: NpsFrameCodec):
+        frame = self._make_frame()
+        wire  = codec.encode(frame, override_tier=EncodingTier.MSGPACK)
+        out   = codec.decode(wire)
+        assert isinstance(out, HelloFrame)
+        assert out.nps_version == "0.2"
+
+    def test_minimal_hello(self, codec: NpsFrameCodec):
+        frame = HelloFrame(
+            nps_version="0.2",
+            supported_encodings=("tier-1",),
+            supported_protocols=("ncp",),
+        )
+        out = codec.decode(codec.encode(frame))
+        assert out.min_version            is None
+        assert out.agent_id               is None
+        assert out.e2e_enc_algorithms     is None
+        assert out.max_frame_payload      == 0xFFFF
+        assert out.ext_support            is False
+        assert out.max_concurrent_streams == 32
 
 
 # ── NpsFrameCodec edge cases ─────────────────────────────────────────────────

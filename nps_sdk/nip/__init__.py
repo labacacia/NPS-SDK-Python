@@ -3,12 +3,13 @@
 
 """NPS NIP — Neural Identity Protocol frames and identity management."""
 
-from nps_sdk.nip.frames import IdentFrame, IdentMetadata, RevokeFrame
+from nps_sdk.nip.frames import IdentFrame, IdentMetadata, RevokeFrame, TrustFrame
 from nps_sdk.nip.identity import NipIdentity
 
 __all__ = [
     "IdentFrame",
     "IdentMetadata",
     "RevokeFrame",
+    "TrustFrame",
     "NipIdentity",
 ]

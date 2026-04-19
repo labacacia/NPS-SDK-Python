@@ -7,7 +7,7 @@ import os
 import tempfile
 import pytest
 
-from nps_sdk.nip.frames import IdentFrame, IdentMetadata, RevokeFrame
+from nps_sdk.nip.frames import IdentFrame, IdentMetadata, RevokeFrame, TrustFrame
 from nps_sdk.nip.identity import NipIdentity
 from nps_sdk.core.codec import NpsFrameCodec
 from nps_sdk.core.frames import EncodingTier, FrameType
@@ -195,6 +195,68 @@ class TestRevokeFrame:
         assert out.target_nid == frame.target_nid
         assert out.reason     == "key_compromise"
         assert out.revoked_at == frame.revoked_at
+
+
+# ── TrustFrame ────────────────────────────────────────────────────────────────
+
+class TestTrustFrame:
+    def _make_frame(self, sig: str = "ed25519:DDDD") -> TrustFrame:
+        return TrustFrame(
+            grantor_nid="urn:nps:org:ca.example.com",
+            grantee_ca="urn:nps:org:ca.partner.com",
+            trust_scope=("nwp:query", "nwp:stream"),
+            nodes=("nwp://example.com/data", "nwp://example.com/actions"),
+            expires_at="2027-04-16T00:00:00Z",
+            signature=sig,
+        )
+
+    def test_frame_type(self):
+        assert self._make_frame().frame_type == FrameType.TRUST
+
+    def test_registry_resolves_trust(self, full_registry: FrameRegistry):
+        assert full_registry.resolve(FrameType.TRUST) is TrustFrame
+
+    def test_unsigned_dict_excludes_signature(self):
+        frame = self._make_frame()
+        d     = frame.unsigned_dict()
+        assert "signature"   not in d
+        assert "grantor_nid" in d
+        assert "grantee_ca"  in d
+
+    def test_roundtrip_json(self, codec: NpsFrameCodec):
+        frame = self._make_frame()
+        wire  = codec.encode(frame, override_tier=EncodingTier.JSON)
+        out   = codec.decode(wire)
+        assert isinstance(out, TrustFrame)
+        assert out.grantor_nid == frame.grantor_nid
+        assert out.grantee_ca  == frame.grantee_ca
+        assert out.trust_scope == frame.trust_scope
+        assert out.nodes       == frame.nodes
+        assert out.expires_at  == frame.expires_at
+
+    def test_roundtrip_msgpack(self, codec: NpsFrameCodec):
+        frame = self._make_frame()
+        out   = codec.decode(codec.encode(frame))  # preferred_tier is MSGPACK
+        assert isinstance(out, TrustFrame)
+        assert out.grantor_nid == frame.grantor_nid
+        assert out.trust_scope == frame.trust_scope
+
+    def test_signed_trust_verify(self, tmp_path):
+        """Integration: generate keypair, sign TrustFrame, verify."""
+        key_file = str(tmp_path / "ca-grantor.key")
+        identity = NipIdentity.generate(key_file, "grantor-pass")
+
+        frame = TrustFrame(
+            grantor_nid="urn:nps:org:ca.example.com",
+            grantee_ca="urn:nps:org:ca.partner.com",
+            trust_scope=("nwp:query",),
+            nodes=("nwp://example.com/data",),
+            expires_at="2027-04-16T00:00:00Z",
+            signature="",  # placeholder
+        )
+        unsigned = frame.unsigned_dict()
+        sig      = identity.sign(unsigned)
+        assert NipIdentity.verify_signature(identity.pub_key_string, unsigned, sig) is True
 
 
 # ── IdentMetadata ─────────────────────────────────────────────────────────────

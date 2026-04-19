@@ -47,6 +47,7 @@ class FrameRegistry:
             DiffFrame,
             StreamFrame,
             CapsFrame,
+            HelloFrame,
             ErrorFrame,
         )
 
@@ -56,6 +57,7 @@ class FrameRegistry:
                 FrameType.DIFF:   DiffFrame,
                 FrameType.STREAM: StreamFrame,
                 FrameType.CAPS:   CapsFrame,
+                FrameType.HELLO:  HelloFrame,
                 FrameType.ERROR:  ErrorFrame,
             }
         )
@@ -64,7 +66,7 @@ class FrameRegistry:
     def create_full(cls) -> "FrameRegistry":
         """Registry pre-populated with NCP + NWP + NIP + NDP + NOP frames."""
         from nps_sdk.nwp.frames import QueryFrame, ActionFrame
-        from nps_sdk.nip.frames import IdentFrame, RevokeFrame
+        from nps_sdk.nip.frames import IdentFrame, RevokeFrame, TrustFrame
         from nps_sdk.ndp.frames import AnnounceFrame, ResolveFrame, GraphFrame
         from nps_sdk.nop.frames import TaskFrame, DelegateFrame, SyncFrame, AlignStreamFrame
 
@@ -72,6 +74,7 @@ class FrameRegistry:
         registry.register(FrameType.QUERY,        QueryFrame)
         registry.register(FrameType.ACTION,       ActionFrame)
         registry.register(FrameType.IDENT,        IdentFrame)
+        registry.register(FrameType.TRUST,        TrustFrame)
         registry.register(FrameType.REVOKE,       RevokeFrame)
         registry.register(FrameType.ANNOUNCE,     AnnounceFrame)
         registry.register(FrameType.RESOLVE,      ResolveFrame)

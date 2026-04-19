@@ -20,6 +20,7 @@ class FrameType(IntEnum):
     STREAM       = 0x03
     CAPS         = 0x04
     ALIGN        = 0x05  # deprecated — use AlignStream (0x43)
+    HELLO        = 0x06
 
     # NWP  0x10–0x1F
     QUERY        = 0x10
