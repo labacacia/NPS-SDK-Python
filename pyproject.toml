@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nps-lib"
-version = "1.0.0-alpha.2"
+version = "1.0.0-alpha.3"
 description = "Python SDK for the Neural Protocol Suite (NPS)"
 readme = "README.md"
 license = { text = "Apache-2.0" }
