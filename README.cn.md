@@ -8,7 +8,7 @@ PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 
 ## 状态
 
-**v1.0.0-alpha.2 — Phase 1 / Phase 2 同步 alpha 发布**
+**v1.0.0-alpha.3 — Phase 1 / Phase 2 同步 alpha 发布**
 
 包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端。
 

@@ -8,7 +8,7 @@ PyPI package: `nps-lib` | Python namespace: `nps_sdk`
 
 ## Status
 
-**v1.0.0-alpha.2 — Phase 1 / Phase 2 synchronized alpha release**
+**v1.0.0-alpha.3 — Phase 1 / Phase 2 synchronized alpha release**
 
 Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, and Ed25519 identity management.
 
