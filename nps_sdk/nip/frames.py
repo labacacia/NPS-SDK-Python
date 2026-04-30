@@ -17,6 +17,7 @@ from typing import Any
 
 from nps_sdk.core.codec import NpsFrame
 from nps_sdk.core.frames import EncodingTier, FrameType
+from nps_sdk.nip.assurance_level import AssuranceLevel
 
 
 # ── IdentMetadata ─────────────────────────────────────────────────────────────
@@ -69,6 +70,15 @@ class IdentFrame(NpsFrame):
     signature:    str
     metadata:     IdentMetadata | None = None
 
+    # NPS-RFC-0003 §5.1.1 — Agent identity assurance level (optional).
+    assurance_level: AssuranceLevel | None = None
+
+    # NPS-RFC-0002 §4.5 — Optional dual-trust X.509 chain (Phase 1 backward compatible).
+    # `cert_format`: "v1-proprietary" (default when None) | "v2-x509".
+    # `cert_chain`:  base64url-encoded DER, ordered [leaf, intermediates..., root].
+    cert_format:  str | None = None
+    cert_chain:   tuple[str, ...] | None = None
+
     @property
     def frame_type(self) -> FrameType:
         return FrameType.IDENT
@@ -92,6 +102,12 @@ class IdentFrame(NpsFrame):
         }
         if self.metadata is not None:
             d["metadata"] = self.metadata.to_dict()
+        if self.assurance_level is not None:
+            d["assurance_level"] = self.assurance_level.wire
+        if self.cert_format is not None:
+            d["cert_format"] = self.cert_format
+        if self.cert_chain is not None:
+            d["cert_chain"] = list(self.cert_chain)
         return d
 
     @classmethod
@@ -99,6 +115,12 @@ class IdentFrame(NpsFrame):
         meta = None
         if data.get("metadata"):
             meta = IdentMetadata.from_dict(data["metadata"])
+        level = None
+        lvl_raw = data.get("assurance_level")
+        if isinstance(lvl_raw, str):
+            level = AssuranceLevel.from_wire(lvl_raw)
+        chain_raw = data.get("cert_chain")
+        chain = tuple(chain_raw) if isinstance(chain_raw, list) else None
         return cls(
             nid=data["nid"],
             pub_key=data["pub_key"],
@@ -110,12 +132,23 @@ class IdentFrame(NpsFrame):
             serial=data["serial"],
             signature=data["signature"],
             metadata=meta,
+            assurance_level=level,
+            cert_format=data.get("cert_format"),
+            cert_chain=chain,
         )
 
     def unsigned_dict(self) -> dict[str, Any]:
-        """Return the dict representation without the 'signature' field, for signing."""
+        """
+        Return the dict representation without the 'signature' field, for signing.
+
+        Per NPS-RFC-0002 §8.1, the v1 Ed25519 signature deliberately does NOT cover
+        cert_format / cert_chain — those are dual-trust additions, validated by the
+        X.509 chain check (Step 3b) instead. v1 verifiers continue to ignore them.
+        """
         d = self.to_dict()
         d.pop("signature", None)
+        d.pop("cert_format", None)
+        d.pop("cert_chain", None)
         return d
 
 

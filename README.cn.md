@@ -8,9 +8,11 @@ PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 
 ## 状态
 
-**v1.0.0-alpha.3 — Phase 1 / Phase 2 同步 alpha 发布**
+**v1.0.0-alpha.4 —— RFC-0002 跨 SDK 端口波（第二棒语言）**
 
-包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端。
+包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端，**加完整 NPS-RFC-0002 X.509 + ACME `agent-01` NID 证书原语**（`nps_sdk.nip.x509` + `nps_sdk.nip.acme`）。
+
+测试数：198 个（含 RFC-0002 7 个），全绿。
 
 ## 环境要求
 
@@ -36,7 +38,9 @@ pip install "nps-lib[dev]"
 | `nps_sdk.core` | 帧头、编解码器（Tier-1 JSON / Tier-2 MsgPack）、anchor 缓存、异常类型 |
 | `nps_sdk.ncp`  | NCP 帧：AnchorFrame、DiffFrame、StreamFrame、CapsFrame、HelloFrame、ErrorFrame |
 | `nps_sdk.nwp`  | NWP 帧：QueryFrame、ActionFrame；异步 `NwpClient` |
-| `nps_sdk.nip`  | NIP 帧：IdentFrame、TrustFrame、RevokeFrame；`NipIdentity`（Ed25519 密钥管理） |
+| `nps_sdk.nip`        | NIP 帧：IdentFrame（v2 双信任）、TrustFrame、RevokeFrame；`NipIdentity`（Ed25519）；`NipIdentVerifier` + `NipVerifierOptions`（RFC-0002 §8.1 双信任）；`AssuranceLevel`（RFC-0003） |
+| `nps_sdk.nip.x509`   | RFC-0002 X.509 NID 证书：`NipX509Builder` / `NipX509Verifier` / `NpsX509Oids` |
+| `nps_sdk.nip.acme`   | RFC-0002 ACME `agent-01`：`AcmeClient` / `AcmeServer`（进程内） / JWS helpers / messages |
 | `nps_sdk.ndp`  | NDP 帧：AnnounceFrame、ResolveFrame、GraphFrame；内存注册表 + 校验器 |
 | `nps_sdk.nop`  | NOP 帧：TaskFrame、DelegateFrame、SyncFrame、AlignStreamFrame；异步 `NopClient` |
 

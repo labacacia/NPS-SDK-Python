@@ -1,0 +1,38 @@
+# Copyright 2026 INNO LOTUS PTY LTD
+# SPDX-License-Identifier: Apache-2.0
+
+"""NIP error code wire constants — mirror of `spec/error-codes.md` NIP section."""
+
+from __future__ import annotations
+
+# ── Cert verification (v1 + v2) ──────────────────────────────────────────────
+CERT_EXPIRED            = "NIP-CERT-EXPIRED"
+CERT_REVOKED            = "NIP-CERT-REVOKED"
+CERT_SIGNATURE_INVALID  = "NIP-CERT-SIGNATURE-INVALID"
+CERT_UNTRUSTED_ISSUER   = "NIP-CERT-UNTRUSTED-ISSUER"
+CERT_CAPABILITY_MISSING = "NIP-CERT-CAPABILITY-MISSING"
+CERT_SCOPE_VIOLATION    = "NIP-CERT-SCOPE-VIOLATION"
+
+# ── CA service ───────────────────────────────────────────────────────────────
+CA_NID_NOT_FOUND          = "NIP-CA-NID-NOT-FOUND"
+CA_NID_ALREADY_EXISTS     = "NIP-CA-NID-ALREADY-EXISTS"
+CA_SERIAL_DUPLICATE       = "NIP-CA-SERIAL-DUPLICATE"
+CA_RENEWAL_TOO_EARLY      = "NIP-CA-RENEWAL-TOO-EARLY"
+CA_SCOPE_EXPANSION_DENIED = "NIP-CA-SCOPE-EXPANSION-DENIED"
+
+OCSP_UNAVAILABLE     = "NIP-OCSP-UNAVAILABLE"
+TRUST_FRAME_INVALID  = "NIP-TRUST-FRAME-INVALID"
+
+# ── RFC-0003 (assurance level) ───────────────────────────────────────────────
+ASSURANCE_MISMATCH = "NIP-ASSURANCE-MISMATCH"
+ASSURANCE_UNKNOWN  = "NIP-ASSURANCE-UNKNOWN"
+
+# ── RFC-0004 (reputation log) ────────────────────────────────────────────────
+REPUTATION_ENTRY_INVALID    = "NIP-REPUTATION-ENTRY-INVALID"
+REPUTATION_LOG_UNREACHABLE  = "NIP-REPUTATION-LOG-UNREACHABLE"
+
+# ── RFC-0002 (X.509 + ACME) ──────────────────────────────────────────────────
+CERT_FORMAT_INVALID       = "NIP-CERT-FORMAT-INVALID"
+CERT_EKU_MISSING          = "NIP-CERT-EKU-MISSING"
+CERT_SUBJECT_NID_MISMATCH = "NIP-CERT-SUBJECT-NID-MISMATCH"
+ACME_CHALLENGE_FAILED     = "NIP-ACME-CHALLENGE-FAILED"

@@ -8,6 +8,60 @@ Until NPS reaches v1.0 stable, every repository in the suite is synchronized to 
 
 ---
 
+## [1.0.0-alpha.4] — 2026-04-30
+
+### Added
+
+- **NPS-RFC-0001 Phase 2 — NCP connection preamble (Python helper
+  parity).** `nps_sdk.ncp.preamble` exposes `write_preamble()` and
+  `read_preamble()` round-tripping the literal `b"NPS/1.0\n"`
+  sentinel; matched by `tests/test_ncp_preamble.py`. Brings Python in
+  line with the .NET / Go / TypeScript / Java preamble helpers shipped
+  at alpha.4.
+- **NPS-RFC-0002 Phase A/B — X.509 NID certificates + ACME `agent-01`
+  (Python port).** New surface under `nps_sdk.nip`:
+  - `nps_sdk.nip.x509` — X.509 NID certificate builder + verifier
+    (built on `cryptography.x509`).
+  - `nps_sdk.nip.acme` — ACME `agent-01` client + server reference
+    (challenge issuance, key authorisation, JWS-signed wire envelope
+    per NPS-RFC-0002 Phase B).
+  - `nps_sdk.nip.assurance_level` — agent identity assurance levels
+    (`anonymous` / `attested` / `verified`) per NPS-RFC-0003.
+  - `nps_sdk.nip.cert_format` — IdentFrame `cert_format` discriminator
+    (`v1` Ed25519 vs. `x509`).
+  - `nps_sdk.nip.error_codes` — NIP error code namespace.
+  - `nps_sdk.nip.verifier` — dual-trust IdentFrame verifier
+    (v1 + X.509).
+- New tests: `test_ncp_preamble.py`, `test_nip_x509.py`,
+  `test_nip_acme_agent01.py`. Total: 211 tests green
+  (was 162 at alpha.3).
+
+### Changed
+
+- Distribution version bumped to `1.0.0-alpha.4` (PyPI
+  normalised: `1.0.0a4`).
+- `nps_sdk.nip.frames.IdentFrame` extended with optional
+  `cert_format` discriminator + `x509_chain` field alongside the
+  existing v1 Ed25519 fields. v1 IdentFrames written by alpha.3
+  consumers continue to verify unchanged.
+
+### Suite-wide highlights at alpha.4
+
+- **NPS-RFC-0002 X.509 + ACME** — full cross-SDK port wave (.NET /
+  Java / Python / TypeScript / Go / Rust). Servers can now issue
+  dual-trust IdentFrames (v1 Ed25519 + X.509 leaf cert chained to a
+  self-signed root) and self-onboard NIDs over ACME's `agent-01`
+  challenge type.
+- **NPS-CR-0002 — Anchor Node topology queries** —
+  `topology.snapshot` / `topology.stream` query types (.NET reference
+  + L2 conformance suite). Python consumer-side helpers planned for a
+  later release; no Python NWP server lives here yet.
+- **`nps-registry` SQLite-backed real registry** + **`nps-ledger`
+  Phase 2** (RFC 9162 Merkle + STH + inclusion proofs) shipped in the
+  daemon repos.
+
+---
+
 ## [1.0.0-alpha.3] — 2026-04-25
 
 ### Changed
@@ -47,6 +101,7 @@ Until NPS reaches v1.0 stable, every repository in the suite is synchronized to 
 
 First public alpha as part of the NPS suite `v1.0.0-alpha.1` release.
 
+[1.0.0-alpha.4]: https://github.com/labacacia/NPS-sdk-py/releases/tag/v1.0.0-alpha.4
 [1.0.0-alpha.3]: https://github.com/LabAcacia/NPS-Dev/releases/tag/v1.0.0-alpha.3
 [1.0.0-alpha.2]: https://github.com/LabAcacia/NPS-Dev/releases/tag/v1.0.0-alpha.2
 [1.0.0-alpha.1]: https://github.com/LabAcacia/NPS-Dev/releases/tag/v1.0.0-alpha.1

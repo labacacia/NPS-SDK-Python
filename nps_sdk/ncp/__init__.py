@@ -14,6 +14,8 @@ from nps_sdk.ncp.frames import (
     HelloFrame,
     ErrorFrame,
 )
+from nps_sdk.ncp import preamble
+from nps_sdk.ncp.preamble import NcpPreambleInvalidError
 
 __all__ = [
     "SchemaField",
@@ -25,4 +27,6 @@ __all__ = [
     "CapsFrame",
     "HelloFrame",
     "ErrorFrame",
+    "preamble",
+    "NcpPreambleInvalidError",
 ]

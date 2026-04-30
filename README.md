@@ -8,9 +8,11 @@ PyPI package: `nps-lib` | Python namespace: `nps_sdk`
 
 ## Status
 
-**v1.0.0-alpha.3 — Phase 1 / Phase 2 synchronized alpha release**
+**v1.0.0-alpha.4 — RFC-0002 cross-SDK port (second language)**
 
-Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, and Ed25519 identity management.
+Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, Ed25519 identity management, **plus full NPS-RFC-0002 X.509 + ACME `agent-01` NID certificate primitives** (`nps_sdk.nip.x509` + `nps_sdk.nip.acme`).
+
+Tests: 198 across the SDK + RFC-0002, all passing.
 
 ## Requirements
 
@@ -36,7 +38,9 @@ pip install "nps-lib[dev]"
 | `nps_sdk.core` | Frame header, codec (Tier-1 JSON / Tier-2 MsgPack), anchor cache, exceptions |
 | `nps_sdk.ncp`  | NCP frames: AnchorFrame, DiffFrame, StreamFrame, CapsFrame, HelloFrame, ErrorFrame |
 | `nps_sdk.nwp`  | NWP frames: QueryFrame, ActionFrame; async `NwpClient` |
-| `nps_sdk.nip`  | NIP frames: IdentFrame, TrustFrame, RevokeFrame; `NipIdentity` (Ed25519 key management) |
+| `nps_sdk.nip`        | NIP frames: IdentFrame (v2 dual-trust), TrustFrame, RevokeFrame; `NipIdentity` (Ed25519); `NipIdentVerifier` + `NipVerifierOptions` (RFC-0002 §8.1 dual-trust); `AssuranceLevel` (RFC-0003) |
+| `nps_sdk.nip.x509`   | RFC-0002 X.509 NID certs: `NipX509Builder` / `NipX509Verifier` / `NpsX509Oids` |
+| `nps_sdk.nip.acme`   | RFC-0002 ACME `agent-01`: `AcmeClient` / `AcmeServer` (in-process) / JWS helpers / messages |
 | `nps_sdk.ndp`  | NDP frames: AnnounceFrame, ResolveFrame, GraphFrame; in-memory registry + validator |
 | `nps_sdk.nop`  | NOP frames: TaskFrame, DelegateFrame, SyncFrame, AlignStreamFrame; async `NopClient` |
 
