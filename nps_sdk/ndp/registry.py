@@ -12,9 +12,12 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from nps_sdk.ndp.frames import AnnounceFrame, NdpResolveResult
+
+if TYPE_CHECKING:
+    from nps_sdk.ndp.dns_txt import DnsTxtLookup
 
 
 class InMemoryNdpRegistry:
@@ -81,6 +84,64 @@ class InMemoryNdpRegistry:
                     port=addr.port,
                     ttl=remaining_ttl,
                 )
+        return None
+
+    async def resolve_via_dns(
+        self,
+        target: str,
+        dns_lookup: "DnsTxtLookup | None" = None,
+    ) -> NdpResolveResult | None:
+        """
+        Resolve a nwp:// target URL to a physical endpoint, falling back to
+        DNS TXT discovery (NPS-4 §5) when the in-memory registry has no match.
+
+        Resolution order:
+
+        1. Call :meth:`resolve` — return immediately if a live entry is found.
+        2. Extract the hostname from *target* and query
+           ``_nps-node.<hostname>`` TXT records.
+        3. Parse each record with
+           :func:`~nps_sdk.ndp.dns_txt.parse_nps_txt_record` and return the
+           first valid result.
+
+        :param target: A ``nwp://`` URL, e.g. ``nwp://api.example.com/products``.
+        :param dns_lookup: Optional custom DNS lookup implementation
+            (defaults to :class:`~nps_sdk.ndp.dns_txt.SystemDnsTxtLookup`).
+        :returns: An :class:`NdpResolveResult`, or ``None`` if resolution fails.
+        """
+        # 1. Try in-memory registry first
+        cached = self.resolve(target)
+        if cached is not None:
+            return cached
+
+        # 2. Extract host and build the DNS label
+        from nps_sdk.ndp.dns_txt import (  # local import to avoid circular dep
+            SystemDnsTxtLookup,
+            _extract_host_from_target,
+            parse_nps_txt_record,
+        )
+
+        host = _extract_host_from_target(target)
+        if not host:
+            return None
+
+        dns_label = f"_nps-node.{host}"
+
+        if dns_lookup is None:
+            dns_lookup = SystemDnsTxtLookup()
+
+        try:
+            records = await dns_lookup.lookup(dns_label)
+        except Exception:
+            return None
+
+        # 3. Parse each TXT record, return first valid result
+        for record_strings in records:
+            txt = " ".join(record_strings)
+            result = parse_nps_txt_record(txt, host)
+            if result is not None:
+                return result
+
         return None
 
     def get_all(self) -> list[AnnounceFrame]:

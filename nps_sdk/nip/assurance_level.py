@@ -34,7 +34,11 @@ class AssuranceLevel(enum.Enum):
 
     @classmethod
     def from_wire(cls, wire: str | None) -> "AssuranceLevel":
-        if wire is None:
+        """Parse a wire string.  ``None`` or ``""`` → :attr:`ANONYMOUS` (backward
+        compat per NPS-RFC-0003 §5.1.1).  Any other unrecognised non-empty value
+        raises ``ValueError`` — callers MUST surface this as ``NIP-ASSURANCE-UNKNOWN``.
+        """
+        if not wire:  # None or ""
             return cls.ANONYMOUS
         for level in cls:
             if level._wire == wire:

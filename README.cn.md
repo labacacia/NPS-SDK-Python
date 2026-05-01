@@ -8,11 +8,18 @@ PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 
 ## 状态
 
-**v1.0.0-alpha.4 —— RFC-0002 跨 SDK 端口波（第二棒语言）**
+**v1.0.0-alpha.5 —— NWP 错误码 + NIP gossip 错误码**
 
 包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端，**加完整 NPS-RFC-0002 X.509 + ACME `agent-01` NID 证书原语**（`nps_sdk.nip.x509` + `nps_sdk.nip.acme`）。
 
-测试数：198 个（含 RFC-0002 7 个），全绿。
+**alpha.5 新增：**
+
+- `nps_sdk.nwp.error_codes` —— 30 个 NWP wire 错误码常量（`NWP-AUTH-*`、`NWP-QUERY-*`、`NWP-TOPOLOGY-*`、`NWP-RESERVED-TYPE-UNSUPPORTED` 等）。
+- `nps_sdk.nip.error_codes` —— 新增 `REPUTATION_GOSSIP_FORK` / `REPUTATION_GOSSIP_SIG_INVALID` 常量（RFC-0004 Phase 3）。
+- `AssuranceLevel.from_wire("")` 改为返回 `ANONYMOUS`，不再抛 `ValueError`（spec §5.1.1 修复）。
+- `nps_sdk.ndp.dns_txt` —— DNS TXT 回退解析：目标不在内存注册表时，`resolve_via_dns(target, dns_lookup=None)` 查询 `_nps-node.<host>` TXT 记录（`v=nps1 nid=... port=... fp=...`）并返回首条有效匹配。
+
+测试数：221 个，全绿。
 
 ## 环境要求
 
@@ -38,10 +45,11 @@ pip install "nps-lib[dev]"
 | `nps_sdk.core` | 帧头、编解码器（Tier-1 JSON / Tier-2 MsgPack）、anchor 缓存、异常类型 |
 | `nps_sdk.ncp`  | NCP 帧：AnchorFrame、DiffFrame、StreamFrame、CapsFrame、HelloFrame、ErrorFrame |
 | `nps_sdk.nwp`  | NWP 帧：QueryFrame、ActionFrame；异步 `NwpClient` |
+| `nps_sdk.nwp.error_codes` | NWP wire 错误码常量（30 个：auth、query、action、task、subscribe、infrastructure、manifest、topology、reserved-type） |
 | `nps_sdk.nip`        | NIP 帧：IdentFrame（v2 双信任）、TrustFrame、RevokeFrame；`NipIdentity`（Ed25519）；`NipIdentVerifier` + `NipVerifierOptions`（RFC-0002 §8.1 双信任）；`AssuranceLevel`（RFC-0003） |
 | `nps_sdk.nip.x509`   | RFC-0002 X.509 NID 证书：`NipX509Builder` / `NipX509Verifier` / `NpsX509Oids` |
 | `nps_sdk.nip.acme`   | RFC-0002 ACME `agent-01`：`AcmeClient` / `AcmeServer`（进程内） / JWS helpers / messages |
-| `nps_sdk.ndp`  | NDP 帧：AnnounceFrame、ResolveFrame、GraphFrame；内存注册表 + 校验器 |
+| `nps_sdk.ndp`  | NDP 帧：AnnounceFrame、ResolveFrame、GraphFrame；内存注册表 + 校验器；DNS TXT 回退解析（`resolve_via_dns`、`nps_sdk.ndp.dns_txt`） |
 | `nps_sdk.nop`  | NOP 帧：TaskFrame、DelegateFrame、SyncFrame、AlignStreamFrame；异步 `NopClient` |
 
 ## 快速开始

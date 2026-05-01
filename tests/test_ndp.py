@@ -11,6 +11,11 @@ import pytest
 from nps_sdk.core.codec import NpsFrameCodec
 from nps_sdk.core.frames import EncodingTier, FrameType
 from nps_sdk.core.registry import FrameRegistry
+from nps_sdk.ndp.dns_txt import (
+    DNS_TXT_DEFAULT_TTL,
+    _extract_host_from_target,
+    parse_nps_txt_record,
+)
 from nps_sdk.ndp.frames import (
     AnnounceFrame,
     GraphFrame,
@@ -418,3 +423,103 @@ class TestNdpAnnounceValidator:
         assert fail.is_valid is False
         assert fail.error_code == "NDP-ANNOUNCE-SIG-INVALID"
         assert fail.message    == "bad sig"
+
+
+# ── TestDnsTxtResolution ──────────────────────────────────────────────────────
+
+class _MockDnsTxtLookup:
+    """Simple test double for DnsTxtLookup — returns a preset list of TXT records."""
+
+    def __init__(self, records: list[list[str]]) -> None:
+        self._records = records
+        self.call_count = 0
+
+    async def lookup(self, hostname: str) -> list[list[str]]:
+        self.call_count += 1
+        return self._records
+
+
+class TestDnsTxtResolution:
+    """Tests for DNS TXT record parsing and resolve_via_dns fallback (NPS-4 §5)."""
+
+    # ── parse_nps_txt_record ──────────────────────────────────────────────────
+
+    def test_parse_valid_record(self):
+        txt = "v=nps1 type=memory port=17434 nid=urn:nps:node:api.example.com:products fp=sha256:a3f9"
+        result = parse_nps_txt_record(txt, "api.example.com")
+        assert result is not None
+        assert result.host             == "api.example.com"
+        assert result.port             == 17434
+        assert result.ttl              == DNS_TXT_DEFAULT_TTL
+        assert result.cert_fingerprint == "sha256:a3f9"
+
+    def test_parse_missing_v_returns_none(self):
+        txt = "type=memory port=17434 nid=urn:nps:node:api.example.com:products"
+        assert parse_nps_txt_record(txt, "api.example.com") is None
+
+    def test_parse_wrong_v_returns_none(self):
+        txt = "v=nps2 nid=urn:nps:node:api.example.com:products"
+        assert parse_nps_txt_record(txt, "api.example.com") is None
+
+    def test_parse_missing_nid_returns_none(self):
+        txt = "v=nps1 type=memory port=17434"
+        assert parse_nps_txt_record(txt, "api.example.com") is None
+
+    def test_parse_default_port(self):
+        txt = "v=nps1 nid=urn:nps:node:api.example.com:products"
+        result = parse_nps_txt_record(txt, "api.example.com")
+        assert result is not None
+        assert result.port == 17433
+
+    def test_parse_with_fingerprint(self):
+        txt = "v=nps1 nid=urn:nps:node:api.example.com:products fp=sha256:deadbeef"
+        result = parse_nps_txt_record(txt, "api.example.com")
+        assert result is not None
+        assert result.cert_fingerprint == "sha256:deadbeef"
+
+    # ── resolve_via_dns ───────────────────────────────────────────────────────
+
+    async def test_resolve_via_dns_uses_registry_first(self, identity):
+        reg   = InMemoryNdpRegistry()
+        frame = _make_announce(identity, nid="urn:nps:node:api.example.com:products")
+        reg.announce(frame)
+
+        mock = _MockDnsTxtLookup([])
+        result = await reg.resolve_via_dns(
+            "nwp://api.example.com/products", dns_lookup=mock
+        )
+        assert result is not None
+        assert result.host == "api.example.com"
+        # DNS should NOT have been called because the registry had a live entry
+        assert mock.call_count == 0
+
+    async def test_resolve_via_dns_falls_back_to_dns(self):
+        reg  = InMemoryNdpRegistry()  # empty registry
+        mock = _MockDnsTxtLookup(
+            [["v=nps1 nid=urn:nps:node:api.example.com:products port=17434"]]
+        )
+        result = await reg.resolve_via_dns(
+            "nwp://api.example.com/products", dns_lookup=mock
+        )
+        assert result is not None
+        assert result.host == "api.example.com"
+        assert result.port == 17434
+        assert mock.call_count == 1
+
+    async def test_resolve_via_dns_invalid_record_returns_none(self):
+        reg  = InMemoryNdpRegistry()
+        mock = _MockDnsTxtLookup(
+            [["v=nps2 nid=urn:nps:node:api.example.com:products"]]
+        )
+        result = await reg.resolve_via_dns(
+            "nwp://api.example.com/products", dns_lookup=mock
+        )
+        assert result is None
+
+    async def test_resolve_via_dns_empty_records_returns_none(self):
+        reg  = InMemoryNdpRegistry()
+        mock = _MockDnsTxtLookup([])  # no TXT records
+        result = await reg.resolve_via_dns(
+            "nwp://api.example.com/products", dns_lookup=mock
+        )
+        assert result is None
