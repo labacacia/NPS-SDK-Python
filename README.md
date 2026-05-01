@@ -8,11 +8,18 @@ PyPI package: `nps-lib` | Python namespace: `nps_sdk`
 
 ## Status
 
-**v1.0.0-alpha.4 — RFC-0002 cross-SDK port (second language)**
+**v1.0.0-alpha.5 — NWP error codes + NIP gossip error codes**
 
 Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, Ed25519 identity management, **plus full NPS-RFC-0002 X.509 + ACME `agent-01` NID certificate primitives** (`nps_sdk.nip.x509` + `nps_sdk.nip.acme`).
 
-Tests: 198 across the SDK + RFC-0002, all passing.
+**alpha.5 additions:**
+
+- `nps_sdk.nwp.error_codes` — 30 NWP wire error code constants (`NWP-AUTH-*`, `NWP-QUERY-*`, `NWP-TOPOLOGY-*`, `NWP-RESERVED-TYPE-UNSUPPORTED`, …).
+- `nps_sdk.nip.error_codes` — new `REPUTATION_GOSSIP_FORK` / `REPUTATION_GOSSIP_SIG_INVALID` constants (RFC-0004 Phase 3).
+- `AssuranceLevel.from_wire("")` returns `ANONYMOUS` instead of raising `ValueError` (spec §5.1.1 fix).
+- `nps_sdk.ndp.dns_txt` — DNS TXT fallback resolution: `resolve_via_dns(target, dns_lookup=None)` looks up `_nps-node.<host>` TXT records (`v=nps1 nid=... port=... fp=...`) when a target is not in the in-memory registry.
+
+Tests: 221 across the SDK, all passing.
 
 ## Requirements
 
@@ -38,10 +45,11 @@ pip install "nps-lib[dev]"
 | `nps_sdk.core` | Frame header, codec (Tier-1 JSON / Tier-2 MsgPack), anchor cache, exceptions |
 | `nps_sdk.ncp`  | NCP frames: AnchorFrame, DiffFrame, StreamFrame, CapsFrame, HelloFrame, ErrorFrame |
 | `nps_sdk.nwp`  | NWP frames: QueryFrame, ActionFrame; async `NwpClient` |
+| `nps_sdk.nwp.error_codes` | NWP wire error code constants (30 codes: auth, query, action, task, subscribe, infrastructure, manifest, topology, reserved-type) |
 | `nps_sdk.nip`        | NIP frames: IdentFrame (v2 dual-trust), TrustFrame, RevokeFrame; `NipIdentity` (Ed25519); `NipIdentVerifier` + `NipVerifierOptions` (RFC-0002 §8.1 dual-trust); `AssuranceLevel` (RFC-0003) |
 | `nps_sdk.nip.x509`   | RFC-0002 X.509 NID certs: `NipX509Builder` / `NipX509Verifier` / `NpsX509Oids` |
 | `nps_sdk.nip.acme`   | RFC-0002 ACME `agent-01`: `AcmeClient` / `AcmeServer` (in-process) / JWS helpers / messages |
-| `nps_sdk.ndp`  | NDP frames: AnnounceFrame, ResolveFrame, GraphFrame; in-memory registry + validator |
+| `nps_sdk.ndp`  | NDP frames: AnnounceFrame, ResolveFrame, GraphFrame; in-memory registry + validator; DNS TXT fallback resolution (`resolve_via_dns`, `nps_sdk.ndp.dns_txt`) |
 | `nps_sdk.nop`  | NOP frames: TaskFrame, DelegateFrame, SyncFrame, AlignStreamFrame; async `NopClient` |
 
 ## Quick Start
