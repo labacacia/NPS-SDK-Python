@@ -2,8 +2,8 @@ FROM python:3.12-slim AS runtime
 
 WORKDIR /app
 
-RUN addgroup --gid 1001 nipca \
- && adduser --uid 1001 --gid 1001 --disabled-password --gecos "" nipca \
+RUN groupadd --gid 1001 nipca \
+ && useradd --uid 1001 --gid 1001 --no-create-home --shell /usr/sbin/nologin nipca \
  && mkdir -p /data && chown nipca:nipca /data
 
 COPY requirements.txt .
