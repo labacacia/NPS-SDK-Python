@@ -12,7 +12,7 @@ PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 
 包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端，**加完整 NPS-RFC-0002 X.509 + ACME `agent-01` NID 证书原语**（`nps_sdk.nip.x509` + `nps_sdk.nip.acme`）。
 
-测试数：198 个（含 RFC-0002 7 个），全绿。
+测试数：221 个（覆盖 SDK + RFC-0002/0003/0004），全绿。
 
 ## 环境要求
 
@@ -163,6 +163,6 @@ pytest -k test_nip     # 仅 NIP 测试
 
 ## 许可证
 
-Apache 2.0 —— 详见 [LICENSE](../../LICENSE)。
+Apache 2.0 —— 详见 [LICENSE](https://github.com/labacacia/NPS-Dev/blob/main/LICENSE)。
 
 Copyright 2026 INNO LOTUS PTY LTD

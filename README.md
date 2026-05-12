@@ -12,7 +12,7 @@ PyPI package: `nps-lib` | Python namespace: `nps_sdk`
 
 Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, Ed25519 identity management, **plus full NPS-RFC-0002 X.509 + ACME `agent-01` NID certificate primitives** (`nps_sdk.nip.x509` + `nps_sdk.nip.acme`).
 
-Tests: 198 across the SDK + RFC-0002, all passing.
+Tests: 221 across the SDK + RFC-0002/0003/0004 coverage, all passing.
 
 ## Requirements
 
@@ -162,6 +162,6 @@ Coverage target: ≥ 90 %.
 
 ## License
 
-Apache 2.0 — see [LICENSE](../../LICENSE).
+Apache 2.0 — see [LICENSE](https://github.com/labacacia/NPS-Dev/blob/main/LICENSE).
 
 Copyright 2026 INNO LOTUS PTY LTD
