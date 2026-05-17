@@ -8,6 +8,20 @@
 
 ---
 
+## [1.0.0-alpha.7] —— 2026-05-17
+
+### 新增
+
+- **`nps_sdk.nip.reputation` — `ReputationLogClient`（NPS-RFC-0004 Phase 2）**：完整的异步 HTTP 声誉日志客户端。`submit_entry`、`query_entries`、`get_sth`、`get_proof`、`get_gossip_sth`。`verify_inclusion` 在本地执行 RFC 9162 §2.1.3.2 Merkle audit-path 验证。`sign_entry` / `verify_entry` 使用 Ed25519 签名和验证条目。Wire 类型：`ReputationLogEntry`、`SignedTreeHead`、`InclusionProof`、`ObservationWindow`。`ReputationLogException` 携带 `nwp_error_code` + `nps_status`。51 条回归测试。全部符号从 `nps_sdk.nip` 重新导出。
+
+- **`nps_sdk.nwp.anchor_client` — `AnchorNodeClient`（NPS-CR-0002）**：Anchor Node 拓扑查询异步客户端。`get_snapshot`（topology.snapshot）和 `subscribe`（topology.stream NDJSON）。类型化事件：`MemberJoined`、`MemberLeft`、`MemberUpdated`、`AnchorState`、`ResyncRequired`。25 条回归测试。
+
+### 跟随套件
+
+本次跟随 NPS 套件 `v1.0.0-alpha.7`。
+
+---
+
 ## [1.0.0-alpha.6] —— 2026-05-14
 
 ### 变更
@@ -123,5 +137,6 @@
 
 作为 NPS 套件 `v1.0.0-alpha.1` 的一部分首次公开 alpha。
 
+[1.0.0-alpha.7]: https://gitee.com/labacacia/NPS-sdk-py/releases/tag/v1.0.0-alpha.7
 [1.0.0-alpha.2]: https://github.com/LabAcacia/nps/releases/tag/v1.0.0-alpha.2
 [1.0.0-alpha.1]: https://github.com/LabAcacia/nps/releases/tag/v1.0.0-alpha.1
