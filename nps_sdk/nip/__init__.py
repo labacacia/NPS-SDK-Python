@@ -5,6 +5,18 @@
 
 from nps_sdk.nip.frames import IdentFrame, IdentMetadata, RevokeFrame, TrustFrame
 from nps_sdk.nip.identity import NipIdentity
+from nps_sdk.nip.reputation import (
+    IncidentType,
+    InclusionProof,
+    ObservationWindow,
+    ReputationLogClient,
+    ReputationLogEntry,
+    ReputationLogException,
+    Severity,
+    SignedTreeHead,
+    sign_entry,
+    verify_entry,
+)
 
 __all__ = [
     "IdentFrame",
@@ -12,4 +24,14 @@ __all__ = [
     "RevokeFrame",
     "TrustFrame",
     "NipIdentity",
+    "IncidentType",
+    "InclusionProof",
+    "ObservationWindow",
+    "ReputationLogClient",
+    "ReputationLogEntry",
+    "ReputationLogException",
+    "Severity",
+    "SignedTreeHead",
+    "sign_entry",
+    "verify_entry",
 ]
