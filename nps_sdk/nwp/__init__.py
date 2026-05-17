@@ -11,6 +11,20 @@ from nps_sdk.nwp.frames import (
     AsyncActionResponse,
 )
 from nps_sdk.nwp.client import NwpClient
+from nps_sdk.nwp.anchor_client import (
+    MemberInfo,
+    TopologySnapshot,
+    TopologyFilter,
+    MemberChanges,
+    TopologyEvent,
+    MemberJoined,
+    MemberLeft,
+    MemberUpdated,
+    AnchorState,
+    ResyncRequired,
+    AnchorTopologyException,
+    AnchorNodeClient,
+)
 
 __all__ = [
     "QueryOrderClause",
@@ -19,4 +33,17 @@ __all__ = [
     "ActionFrame",
     "AsyncActionResponse",
     "NwpClient",
+    # Anchor topology
+    "MemberInfo",
+    "TopologySnapshot",
+    "TopologyFilter",
+    "MemberChanges",
+    "TopologyEvent",
+    "MemberJoined",
+    "MemberLeft",
+    "MemberUpdated",
+    "AnchorState",
+    "ResyncRequired",
+    "AnchorTopologyException",
+    "AnchorNodeClient",
 ]
