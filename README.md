@@ -8,9 +8,9 @@ PyPI package: `nps-lib` | Python namespace: `nps_sdk`
 
 ## Status
 
-**v1.0.0-alpha.6 — RFC-0002 cross-SDK port (second language)**
+**v1.0.0-alpha.7 — ReputationLogClient (RFC-0004 Ph2) · AnchorNodeClient test coverage**
 
-Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, Ed25519 identity management, **plus full NPS-RFC-0002 X.509 + ACME `agent-01` NID certificate primitives** (`nps_sdk.nip.x509` + `nps_sdk.nip.acme`).
+Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, Ed25519 identity management, **plus full NPS-RFC-0002 X.509 + ACME `agent-01` NID certificate primitives** (`nps_sdk.nip.x509` + `nps_sdk.nip.acme`). Alpha.7 adds `ReputationLogClient` (CT-style reputation log, RFC-0004 Phase 2) and 25 AnchorNodeClient tests.
 
 Tests: 221 across the SDK + RFC-0002/0003/0004 coverage, all passing.
 
