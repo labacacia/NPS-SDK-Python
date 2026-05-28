@@ -8,6 +8,17 @@ Until NPS reaches v1.0 stable, every repository in the suite is synchronized to 
 
 ---
 
+## [1.0.0-alpha.8] — 2026-05-28
+
+### Tracking the suite
+
+This release tracks NPS suite `v1.0.0-alpha.8`.
+
+Suite highlights: RFC-0005 `ReputationPolicyEvaluator` in .NET SDK; cgn_limit
+pre-execution enforcement; RFC-0002 and RFC-0005 promoted to Accepted.
+
+---
+
 ## [1.0.0-alpha.7] — 2026-05-17
 
 ### Added
@@ -143,6 +154,7 @@ This release tracks NPS suite `v1.0.0-alpha.7`.
 
 First public alpha as part of the NPS suite `v1.0.0-alpha.1` release.
 
+[1.0.0-alpha.8]: https://github.com/labacacia/NPS-sdk-py/releases/tag/v1.0.0-alpha.8
 [1.0.0-alpha.7]: https://github.com/labacacia/NPS-sdk-py/releases/tag/v1.0.0-alpha.7
 [1.0.0-alpha.2]: https://github.com/LabAcacia/nps/releases/tag/v1.0.0-alpha.2
 [1.0.0-alpha.1]: https://github.com/LabAcacia/nps/releases/tag/v1.0.0-alpha.1
