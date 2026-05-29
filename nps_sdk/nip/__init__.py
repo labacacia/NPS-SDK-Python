@@ -5,6 +5,8 @@
 
 from nps_sdk.nip.frames import IdentFrame, IdentMetadata, RevokeFrame, TrustFrame
 from nps_sdk.nip.identity import NipIdentity
+from nps_sdk.nip import error_codes
+from nps_sdk.nip.error_codes import NIP_ERROR_TO_NPS_STATUS
 from nps_sdk.nip.reputation import (
     IncidentType,
     InclusionProof,
@@ -24,6 +26,8 @@ __all__ = [
     "RevokeFrame",
     "TrustFrame",
     "NipIdentity",
+    "error_codes",
+    "NIP_ERROR_TO_NPS_STATUS",
     "IncidentType",
     "InclusionProof",
     "ObservationWindow",

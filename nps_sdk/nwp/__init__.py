@@ -18,6 +18,8 @@ from nps_sdk.nwp.frames import (
     VectorSearchOptions,
 )
 from nps_sdk.nwp.client import NwpClient
+from nps_sdk.nwp import error_codes
+from nps_sdk.nwp.error_codes import NWP_ERROR_TO_NPS_STATUS
 from nps_sdk.nwp.anchor_client import (
     MemberInfo,
     TopologySnapshot,
@@ -47,6 +49,9 @@ __all__ = [
     "ActionFrame",
     "AsyncActionResponse",
     "NwpClient",
+    # error codes
+    "error_codes",
+    "NWP_ERROR_TO_NPS_STATUS",
     # Anchor topology
     "MemberInfo",
     "TopologySnapshot",

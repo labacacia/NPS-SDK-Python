@@ -22,6 +22,8 @@ from nps_sdk.nop.frames import (
     TaskFrame,
 )
 from nps_sdk.nop.client import NopClient, NopTaskStatus
+from nps_sdk.nop import error_codes
+from nps_sdk.nop.error_codes import NOP_ERROR_TO_NPS_STATUS
 
 __all__ = [
     # models
@@ -43,4 +45,7 @@ __all__ = [
     # client
     "NopClient",
     "NopTaskStatus",
+    # error codes
+    "error_codes",
+    "NOP_ERROR_TO_NPS_STATUS",
 ]

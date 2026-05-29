@@ -16,6 +16,8 @@ from nps_sdk.ncp.frames import (
 )
 from nps_sdk.ncp import preamble
 from nps_sdk.ncp.preamble import NcpPreambleInvalidError
+from nps_sdk.ncp import error_codes
+from nps_sdk.ncp.error_codes import NCP_ERROR_TO_NPS_STATUS
 
 __all__ = [
     "SchemaField",
@@ -29,4 +31,6 @@ __all__ = [
     "ErrorFrame",
     "preamble",
     "NcpPreambleInvalidError",
+    "error_codes",
+    "NCP_ERROR_TO_NPS_STATUS",
 ]

@@ -19,6 +19,8 @@ from nps_sdk.ndp.frames import (
 )
 from nps_sdk.ndp.registry import InMemoryNdpRegistry
 from nps_sdk.ndp.validator import NdpAnnounceResult, NdpAnnounceValidator
+from nps_sdk.ndp import error_codes
+from nps_sdk.ndp.error_codes import NDP_ERROR_TO_NPS_STATUS
 
 __all__ = [
     "AnnounceFrame",
@@ -34,4 +36,6 @@ __all__ = [
     "NdpAnnounceValidator",
     "SystemDnsTxtLookup",
     "parse_nps_txt_record",
+    "error_codes",
+    "NDP_ERROR_TO_NPS_STATUS",
 ]

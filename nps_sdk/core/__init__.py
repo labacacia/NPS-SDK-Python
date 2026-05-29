@@ -13,6 +13,8 @@ from nps_sdk.core.exceptions import (
 )
 from nps_sdk.core.codec import Tier1JsonCodec, Tier2MsgPackCodec, NpsFrameCodec
 from nps_sdk.core.cache import AnchorFrameCache
+from nps_sdk.core import status_codes
+from nps_sdk.core.status_codes import NPS_STATUS_TO_HTTP, to_http_status
 
 __all__ = [
     "EncodingTier",
@@ -28,4 +30,7 @@ __all__ = [
     "Tier2MsgPackCodec",
     "NpsFrameCodec",
     "AnchorFrameCache",
+    "status_codes",
+    "NPS_STATUS_TO_HTTP",
+    "to_http_status",
 ]
