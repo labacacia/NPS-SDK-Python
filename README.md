@@ -1,13 +1,6 @@
 English | [中文版](./README.cn.md)
 
 # NPS Python SDK (`nps-lib`)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.8-orange.svg)](CHANGELOG.md)
-[![NCP](https://img.shields.io/badge/NCP-v0.6-5b8cff.svg)]()
-[![NWP](https://img.shields.io/badge/NWP-v0.12-4af0b0.svg)]()
-[![NIP](https://img.shields.io/badge/NIP-v0.8-7b61ff.svg)]()
-[![NDP](https://img.shields.io/badge/NDP-v0.7-f0a050.svg)]()
-[![NOP](https://img.shields.io/badge/NOP-v0.5-ff8c42.svg)]()
 
 Python client library for the **Neural Protocol Suite (NPS)** — a complete internet protocol stack designed for AI agents and models.
 
@@ -15,9 +8,9 @@ PyPI package: `nps-lib` | Python namespace: `nps_sdk`
 
 ## Status
 
-**v1.0.0-alpha.8 — tracking NPS suite alpha.8 (RFC-0005 ReputationPolicyEvaluator · cgn_limit enforcement)**
+**v1.0.0-alpha.11 — RFC-0002 cross-SDK port (second language)**
 
-Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, Ed25519 identity management, **plus full NPS-RFC-0002 X.509 + ACME `agent-01` NID certificate primitives** (`nps_sdk.nip.x509` + `nps_sdk.nip.acme`). Alpha.8 tracks NPS suite alpha.8: RFC-0005 `ReputationPolicyEvaluator` in .NET SDK, cgn_limit pre-execution enforcement, RFC-0002 and RFC-0005 promoted to Accepted.
+Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, Ed25519 identity management, **plus full NPS-RFC-0002 X.509 + ACME `agent-01` NID certificate primitives** (`nps_sdk.nip.x509` + `nps_sdk.nip.acme`).
 
 Tests: 221 across the SDK + RFC-0002/0003/0004 coverage, all passing.
 

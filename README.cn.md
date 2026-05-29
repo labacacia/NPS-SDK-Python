@@ -1,13 +1,6 @@
 [English Version](./README.md) | 中文版
 
 # NPS Python SDK (`nps-lib`)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.8-orange.svg)](CHANGELOG.cn.md)
-[![NCP](https://img.shields.io/badge/NCP-v0.6-5b8cff.svg)]()
-[![NWP](https://img.shields.io/badge/NWP-v0.12-4af0b0.svg)]()
-[![NIP](https://img.shields.io/badge/NIP-v0.8-7b61ff.svg)]()
-[![NDP](https://img.shields.io/badge/NDP-v0.7-f0a050.svg)]()
-[![NOP](https://img.shields.io/badge/NOP-v0.5-ff8c42.svg)]()
 
 面向 **Neural Protocol Suite (NPS)** 的 Python 客户端库 —— 为 AI Agent 与模型设计的完整互联网协议栈。
 
@@ -15,9 +8,9 @@ PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 
 ## 状态
 
-**v1.0.0-alpha.8 —— 跟进 NPS 套件 alpha.8（RFC-0005 ReputationPolicyEvaluator · cgn_limit 预执行拦截）**
+**v1.0.0-alpha.11 —— RFC-0002 跨 SDK 端口波（第二棒语言）**
 
-包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端，**加完整 NPS-RFC-0002 X.509 + ACME `agent-01` NID 证书原语**（`nps_sdk.nip.x509` + `nps_sdk.nip.acme`）。Alpha.8 跟进 NPS 套件 alpha.8：.NET SDK 落地 RFC-0005 `ReputationPolicyEvaluator`、cgn_limit 预执行拦截、RFC-0002 与 RFC-0005 晋级为 Accepted。
+包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端，**加完整 NPS-RFC-0002 X.509 + ACME `agent-01` NID 证书原语**（`nps_sdk.nip.x509` + `nps_sdk.nip.acme`）。
 
 测试数：221 个（覆盖 SDK + RFC-0002/0003/0004），全绿。
 

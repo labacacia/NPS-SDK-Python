@@ -3,7 +3,7 @@ English | [中文版](./overview.cn.md)
 # NPS Python SDK — Overview
 
 > **PyPI**: [`nps-lib`](https://pypi.org/project/nps-lib/) · **Import namespace**: `nps_sdk` · **Python**: ≥ 3.11
-> **Version**: 1.0.0-alpha.1 · **License**: Apache-2.0
+> **Version**: 1.0.0-alpha.11 · **License**: Apache-2.0
 > **Spec**: [NPS-0 Overview](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-0-Overview.md)
 
 This SDK is the async Python implementation of the **Neural Protocol Suite** —
@@ -143,10 +143,10 @@ failures propagate as `httpx.HTTPStatusError`.
 
 | Layer | Spec |
 |-------|------|
-| Wire framing | [NPS-1 NCP v0.4](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-1-NCP.md) |
-| Memory / Action nodes | [NPS-2 NWP v0.4](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-2-NWP.md) |
-| Identity + Ed25519 | [NPS-3 NIP v0.2](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-3-NIP.md) |
-| Discovery | [NPS-4 NDP v0.2](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-4-NDP.md) |
-| Orchestration | [NPS-5 NOP v0.3](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-5-NOP.md) |
+| Wire framing | [NPS-1 NCP v0.7](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-1-NCP.md) |
+| Memory / Action nodes | [NPS-2 NWP v0.13](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-2-NWP.md) |
+| Identity + Ed25519 | [NPS-3 NIP v0.9](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-3-NIP.md) |
+| Discovery | [NPS-4 NDP v0.8](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-4-NDP.md) |
+| Orchestration | [NPS-5 NOP v0.6](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-5-NOP.md) |
 | Frame registry | [`frame-registry.yaml`](https://github.com/labacacia/NPS-Release/blob/main/spec/frame-registry.yaml) |
 | Error codes | [`error-codes.md`](https://github.com/labacacia/NPS-Release/blob/main/spec/error-codes.md) |

@@ -4,11 +4,18 @@
 """NPS NWP — Neural Web Protocol frames and async client."""
 
 from nps_sdk.nwp.frames import (
+    NWP_TOPOLOGY_SNAPSHOT,
+    NWP_TOPOLOGY_STREAM,
+    BridgeNodeSpec,
     QueryOrderClause,
-    VectorSearchOptions,
-    QueryFrame,
     ActionFrame,
     AsyncActionResponse,
+    QueryFrame,
+    TopologyEvent,
+    TopologyMember,
+    TopologySnapshotRequest,
+    TopologyStreamRequest,
+    VectorSearchOptions,
 )
 from nps_sdk.nwp.client import NwpClient
 from nps_sdk.nwp.anchor_client import (
@@ -27,9 +34,16 @@ from nps_sdk.nwp.anchor_client import (
 )
 
 __all__ = [
+    "NWP_TOPOLOGY_SNAPSHOT",
+    "NWP_TOPOLOGY_STREAM",
+    "BridgeNodeSpec",
     "QueryOrderClause",
     "VectorSearchOptions",
     "QueryFrame",
+    "TopologyEvent",
+    "TopologyMember",
+    "TopologySnapshotRequest",
+    "TopologyStreamRequest",
     "ActionFrame",
     "AsyncActionResponse",
     "NwpClient",

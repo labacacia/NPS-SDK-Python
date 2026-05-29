@@ -3,7 +3,7 @@
 # NPS Python SDK — 总览
 
 > **PyPI**：[`nps-lib`](https://pypi.org/project/nps-lib/) · **导入命名空间**：`nps_sdk` · **Python**：≥ 3.11
-> **版本**：1.0.0-alpha.1 · **许可证**：Apache-2.0
+> **版本**：1.0.0-alpha.11 · **许可证**：Apache-2.0
 > **规范**：[NPS-0 Overview](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-0-Overview.cn.md)
 
 本 SDK 是 **Neural Protocol Suite** 的异步 Python 实现 ——
@@ -142,10 +142,10 @@ NOP 操作通过 `AlignStreamFrame.error`（一个 `StreamError`）
 
 | 层 | 规范 |
 |----|------|
-| 线缆封帧 | [NPS-1 NCP v0.4](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-1-NCP.cn.md) |
-| Memory / Action 节点 | [NPS-2 NWP v0.4](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-2-NWP.cn.md) |
-| 身份 + Ed25519 | [NPS-3 NIP v0.2](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-3-NIP.cn.md) |
-| 发现 | [NPS-4 NDP v0.2](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-4-NDP.cn.md) |
-| 编排 | [NPS-5 NOP v0.3](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-5-NOP.cn.md) |
+| 线缆封帧 | [NPS-1 NCP v0.7](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-1-NCP.cn.md) |
+| Memory / Action 节点 | [NPS-2 NWP v0.13](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-2-NWP.cn.md) |
+| 身份 + Ed25519 | [NPS-3 NIP v0.9](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-3-NIP.cn.md) |
+| 发现 | [NPS-4 NDP v0.8](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-4-NDP.cn.md) |
+| 编排 | [NPS-5 NOP v0.6](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-5-NOP.cn.md) |
 | 帧注册表 | [`frame-registry.yaml`](https://github.com/labacacia/NPS-Release/blob/main/spec/frame-registry.yaml) |
 | 错误码 | [`error-codes.cn.md`](https://github.com/labacacia/NPS-Release/blob/main/spec/error-codes.cn.md) |

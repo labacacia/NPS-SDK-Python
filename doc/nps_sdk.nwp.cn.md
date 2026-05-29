@@ -3,7 +3,7 @@
 # `nps_sdk.nwp` — 类与方法参考
 
 > 根模块：`nps_sdk.nwp`
-> 规范：[NPS-2 NWP v0.4](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-2-NWP.md)
+> 规范：[NPS-2 NWP v0.13](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-2-NWP.md)
 
 NWP 是 AI 的 HTTP。本模块提供两个 NWP 帧（`QueryFrame`、
 `ActionFrame`）、异步 `NwpClient`，以及用于查询排序、向量

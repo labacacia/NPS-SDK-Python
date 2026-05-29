@@ -3,7 +3,7 @@ English | [中文版](./nps_sdk.core.cn.md)
 # `nps_sdk.core` — Class and Method Reference
 
 > Root module: `nps_sdk.core`
-> Spec: [NPS-1 NCP v0.4 §3](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-1-NCP.md)
+> Spec: [NPS-1 NCP v0.7 §3](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-1-NCP.md)
 
 The `core` module is the wire-level foundation every other NPS module builds on:
 frame header parsing, the Tier-1/Tier-2 codec pipeline, the anchor cache, the

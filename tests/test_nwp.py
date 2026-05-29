@@ -11,8 +11,11 @@ from nps_sdk.core.registry import FrameRegistry
 from nps_sdk.nwp.frames import (
     ActionFrame,
     AsyncActionResponse,
+    BridgeNodeSpec,
+    NWP_TOPOLOGY_SNAPSHOT,
     QueryFrame,
     QueryOrderClause,
+    TopologySnapshotRequest,
     VectorSearchOptions,
 )
 
@@ -70,6 +73,27 @@ class TestQueryFrame:
         assert out.vector_search.top_k  == 5
         assert out.vector_search.metric == "cosine"
         assert len(out.vector_search.vector) == 3
+
+    def test_alpha11_query_extensions(self):
+        frame = QueryFrame.from_dict({
+            "anchor_ref": "sha256:" + "c" * 64,
+            "cursor": "page-2",
+            "order_by": [{"field": "created_at", "dir": "DESC"}],
+            "vector_search": {"vectorField": "embedding", "vector": [0.1], "topK": 3, "minScore": 0.7},
+            "auto_anchor": True,
+            "stream": True,
+            "aggregate": {"count": "*"},
+            "token_budget": 4096,
+            "tokenizer": "cl100k_base",
+            "request_id": "req-1",
+        })
+        assert frame.order is not None
+        assert frame.order[0].field == "created_at"
+        assert frame.vector_search is not None
+        assert frame.vector_search.field == "embedding"
+        assert frame.vector_search.top_k == 3
+        assert frame.auto_anchor is True
+        assert frame.token_budget == 4096
 
 
 # ── ActionFrame ──────────────────────────────────────────────────────────────
@@ -141,3 +165,12 @@ class TestAsyncActionResponse:
         assert out.task_id  == "t-1"
         assert out.status   == "pending"
         assert out.poll_url == "nwp://host/tasks/t-1"
+
+
+class TestTopologyModels:
+    def test_snapshot_and_bridge_dicts(self):
+        req = TopologySnapshotRequest(anchor_ref="sha256:" + "d" * 64, include_bridges=True, max_depth=2)
+        bridge = BridgeNodeSpec(bridge_id="bridge-1", source_protocol="nwp", target_protocol="ndp")
+        assert req.to_dict()["kind"] == NWP_TOPOLOGY_SNAPSHOT
+        assert req.to_dict()["include_bridges"] is True
+        assert bridge.to_dict()["target_protocol"] == "ndp"

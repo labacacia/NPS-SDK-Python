@@ -3,7 +3,7 @@
 # `nps_sdk.core` — 类与方法参考
 
 > 根模块：`nps_sdk.core`
-> 规范：[NPS-1 NCP v0.4 §3](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-1-NCP.md)
+> 规范：[NPS-1 NCP v0.7 §3](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-1-NCP.md)
 
 `core` 模块是所有其他 NPS 模块构建所依赖的线路层基础：
 帧头解析、Tier-1/Tier-2 编解码管线、锚点缓存、帧类型注册表，

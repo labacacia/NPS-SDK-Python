@@ -3,7 +3,7 @@
 # `nps_sdk.ndp` — 类与方法参考
 
 > 根模块：`nps_sdk.ndp`
-> 规范：[NPS-4 NDP v0.2](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-4-NDP.md)
+> 规范：[NPS-4 NDP v0.8](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-4-NDP.md)
 
 NDP 是发现层 —— NPS 对应 DNS 的组件。本模块提供三个 NDP
 帧类型、一个带惰性 TTL 过期的线程安全内存注册表，以及

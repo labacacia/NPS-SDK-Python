@@ -54,11 +54,11 @@ MANIFEST_VERSION_UNSUPPORTED = "NWP-MANIFEST-VERSION-UNSUPPORTED"
 MANIFEST_NODE_TYPE_REMOVED   = "NWP-MANIFEST-NODE-TYPE-REMOVED"
 MANIFEST_NODE_TYPE_UNKNOWN   = "NWP-MANIFEST-NODE-TYPE-UNKNOWN"
 
-# ── Topology (alpha.4+) ───────────────────────────────────────────────────────
+# ── Topology (alpha.11+) ───────────────────────────────────────────────────────
 TOPOLOGY_UNAUTHORIZED       = "NWP-TOPOLOGY-UNAUTHORIZED"
 TOPOLOGY_UNSUPPORTED_SCOPE  = "NWP-TOPOLOGY-UNSUPPORTED-SCOPE"
 TOPOLOGY_DEPTH_UNSUPPORTED  = "NWP-TOPOLOGY-DEPTH-UNSUPPORTED"
 TOPOLOGY_FILTER_UNSUPPORTED = "NWP-TOPOLOGY-FILTER-UNSUPPORTED"
 
-# ── Reserved type (alpha.5+) ─────────────────────────────────────────────────
+# ── Reserved type (alpha.11+) ─────────────────────────────────────────────────
 RESERVED_TYPE_UNSUPPORTED = "NWP-RESERVED-TYPE-UNSUPPORTED"

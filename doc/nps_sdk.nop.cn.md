@@ -3,7 +3,7 @@
 # `nps_sdk.nop` — 类与方法参考
 
 > 根模块：`nps_sdk.nop`
-> 规范：[NPS-5 NOP v0.3](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-5-NOP.md)
+> 规范：[NPS-5 NOP v0.6](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-5-NOP.md)
 
 NOP 是 NPS 的 SMTP/MQ —— 多 Agent 工作负载的规划、委托与
 汇合。本模块提供四个 NOP 帧（`TaskFrame`、`DelegateFrame`、

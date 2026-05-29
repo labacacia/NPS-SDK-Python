@@ -3,7 +3,7 @@
 # `nps_sdk.nip` — 类与方法参考
 
 > 根模块：`nps_sdk.nip`
-> 规范：[NPS-3 NIP v0.2](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-3-NIP.md)
+> 规范：[NPS-3 NIP v0.9](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-3-NIP.md)
 
 NIP 是 NPS 的 TLS/PKI。本模块暴露身份帧（`IdentFrame`、
 `RevokeFrame`）、它们的元数据模型（`IdentMetadata`），

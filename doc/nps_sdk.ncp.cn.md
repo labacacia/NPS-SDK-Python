@@ -3,7 +3,7 @@
 # `nps_sdk.ncp` — 类与方法参考
 
 > 根模块：`nps_sdk.ncp`
-> 规范：[NPS-1 NCP v0.4](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-1-NCP.md)
+> 规范：[NPS-1 NCP v0.7](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-1-NCP.md)
 
 NCP 是 NPS 的线路与 schema 层。本模块暴露在线路上传输的具体
 帧 dataclass（`AnchorFrame`、`DiffFrame`、`StreamFrame`、

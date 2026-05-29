@@ -3,7 +3,7 @@ English | [中文版](./nps_sdk.nop.cn.md)
 # `nps_sdk.nop` — Class and Method Reference
 
 > Root module: `nps_sdk.nop`
-> Spec: [NPS-5 NOP v0.3](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-5-NOP.md)
+> Spec: [NPS-5 NOP v0.6](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-5-NOP.md)
 
 NOP is the SMTP/MQ of NPS — how multi-Agent workloads get planned, delegated
 and joined. This module ships the four NOP frames (`TaskFrame`,

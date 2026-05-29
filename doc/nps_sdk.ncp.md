@@ -3,7 +3,7 @@ English | [中文版](./nps_sdk.ncp.cn.md)
 # `nps_sdk.ncp` — Class and Method Reference
 
 > Root module: `nps_sdk.ncp`
-> Spec: [NPS-1 NCP v0.4](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-1-NCP.md)
+> Spec: [NPS-1 NCP v0.7](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-1-NCP.md)
 
 NCP is the wire-and-schema layer of NPS. This module exposes the concrete frame
 dataclasses that travel on the wire (`AnchorFrame`, `DiffFrame`, `StreamFrame`,
