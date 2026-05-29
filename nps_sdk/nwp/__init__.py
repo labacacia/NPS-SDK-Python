@@ -34,6 +34,13 @@ from nps_sdk.nwp.anchor_client import (
     AnchorTopologyException,
     AnchorNodeClient,
 )
+from nps_sdk.nwp.cgn import (
+    estimate_cgn,
+    estimate_cgn_json,
+    estimate_cgn_rows,
+    TokenBudgetMeta,
+    BudgetExceededError,
+)
 
 __all__ = [
     "NWP_TOPOLOGY_SNAPSHOT",
@@ -65,4 +72,10 @@ __all__ = [
     "ResyncRequired",
     "AnchorTopologyException",
     "AnchorNodeClient",
+    # CGN token-budget helpers
+    "estimate_cgn",
+    "estimate_cgn_json",
+    "estimate_cgn_rows",
+    "TokenBudgetMeta",
+    "BudgetExceededError",
 ]
