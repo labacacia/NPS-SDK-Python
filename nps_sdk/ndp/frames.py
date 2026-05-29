@@ -113,6 +113,12 @@ class AnnounceFrame(NpsFrame):
     timestamp:    str    # ISO 8601 UTC
     signature:    str    # ed25519:<base64url> over canonical JSON
     node_type:    str | None = None
+    node_roles:           tuple[str, ...] | None = None
+    cluster_anchor:       str | None = None
+    spawn_spec_ref:       str | None = None
+    bridge_protocols:     tuple[str, ...] | None = None
+    activation_mode:      str | None = None
+    activation_endpoint:  str | None = None
 
     @property
     def frame_type(self) -> FrameType:
@@ -139,10 +145,25 @@ class AnnounceFrame(NpsFrame):
         }
         if self.node_type is not None:
             d["node_type"] = self.node_type
+        if self.node_roles is not None:
+            d["node_roles"] = list(self.node_roles)
+        if self.cluster_anchor is not None:
+            d["cluster_anchor"] = self.cluster_anchor
+        if self.spawn_spec_ref is not None:
+            d["spawn_spec_ref"] = self.spawn_spec_ref
+        if self.bridge_protocols is not None:
+            d["bridge_protocols"] = list(self.bridge_protocols)
+        if self.activation_mode is not None:
+            d["activation_mode"] = self.activation_mode
+        if self.activation_endpoint is not None:
+            d["activation_endpoint"] = self.activation_endpoint
         return d
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AnnounceFrame":
+        # Support legacy node_kind alias (pre-alpha.3)
+        node_roles_raw = data.get("node_roles") or data.get("node_kind")
+        bridge_protocols_raw = data.get("bridge_protocols")
         return cls(
             nid=data["nid"],
             addresses=tuple(NdpAddress.from_dict(a) for a in data.get("addresses", [])),
@@ -151,6 +172,12 @@ class AnnounceFrame(NpsFrame):
             timestamp=data["timestamp"],
             signature=data["signature"],
             node_type=data.get("node_type"),
+            node_roles=tuple(node_roles_raw) if node_roles_raw is not None else None,
+            cluster_anchor=data.get("cluster_anchor"),
+            spawn_spec_ref=data.get("spawn_spec_ref"),
+            bridge_protocols=tuple(bridge_protocols_raw) if bridge_protocols_raw is not None else None,
+            activation_mode=data.get("activation_mode"),
+            activation_endpoint=data.get("activation_endpoint"),
         )
 
 

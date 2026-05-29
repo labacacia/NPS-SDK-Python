@@ -41,6 +41,12 @@ from nps_sdk.nwp.cgn import (
     TokenBudgetMeta,
     BudgetExceededError,
 )
+from nps_sdk.nwp.bridge import (
+    BridgeProtocols,
+    BridgeNodeDescriptor,
+    BridgeTarget,
+    NODE_TYPE_BRIDGE,
+)
 
 __all__ = [
     "NWP_TOPOLOGY_SNAPSHOT",
@@ -78,4 +84,9 @@ __all__ = [
     "estimate_cgn_rows",
     "TokenBudgetMeta",
     "BudgetExceededError",
+    # Bridge Node types
+    "BridgeProtocols",
+    "BridgeNodeDescriptor",
+    "BridgeTarget",
+    "NODE_TYPE_BRIDGE",
 ]
