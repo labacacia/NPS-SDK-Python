@@ -47,6 +47,15 @@ from nps_sdk.nwp.bridge import (
     BridgeTarget,
     NODE_TYPE_BRIDGE,
 )
+from nps_sdk.nwp.reputation import (
+    ReputationRule,
+    ReputationPolicy,
+    RepOutcome,
+    ReputationDecision,
+    IReputationEvaluator,
+    DefaultReputationEvaluator,
+    default_reputation_evaluator,
+)
 
 __all__ = [
     "NWP_TOPOLOGY_SNAPSHOT",
@@ -89,4 +98,12 @@ __all__ = [
     "BridgeNodeDescriptor",
     "BridgeTarget",
     "NODE_TYPE_BRIDGE",
+    # Reputation policy (RFC-0005)
+    "ReputationRule",
+    "ReputationPolicy",
+    "RepOutcome",
+    "ReputationDecision",
+    "IReputationEvaluator",
+    "DefaultReputationEvaluator",
+    "default_reputation_evaluator",
 ]
