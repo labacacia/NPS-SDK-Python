@@ -20,6 +20,25 @@ from nps_sdk.core.frames import EncodingTier, FrameType
 from nps_sdk.nip.assurance_level import AssuranceLevel
 
 
+# ── IdentReputationPolicyHint ─────────────────────────────────────────────────
+
+@dataclasses.dataclass(frozen=True)
+class IdentReputationPolicyHint:
+    """Unsigned advisory reputation hint in IdentFrame.metadata (RFC-0005 §4.2)."""
+    log_sources: tuple[str, ...] = ()   # URLs of log operators the agent has registered with
+    consent:     bool = False           # True if agent consents to reputation logging
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"log_sources": list(self.log_sources), "consent": self.consent}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "IdentReputationPolicyHint":
+        return cls(
+            log_sources=tuple(data.get("log_sources", [])),
+            consent=bool(data.get("consent", False)),
+        )
+
+
 # ── IdentMetadata ─────────────────────────────────────────────────────────────
 
 @dataclasses.dataclass(frozen=True)
@@ -32,20 +51,24 @@ class IdentMetadata:
     model_family: str | None = None
     tokenizer:    str | None = None
     runtime:      str | None = None
+    reputation_policy: IdentReputationPolicyHint | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {}
-        if self.model_family is not None: d["model_family"] = self.model_family
-        if self.tokenizer    is not None: d["tokenizer"]    = self.tokenizer
-        if self.runtime      is not None: d["runtime"]      = self.runtime
+        if self.model_family      is not None: d["model_family"]      = self.model_family
+        if self.tokenizer         is not None: d["tokenizer"]         = self.tokenizer
+        if self.runtime           is not None: d["runtime"]           = self.runtime
+        if self.reputation_policy is not None: d["reputation_policy"] = self.reputation_policy.to_dict()
         return d
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "IdentMetadata":
+        rp_raw = data.get("reputation_policy")
         return cls(
             model_family=data.get("model_family"),
             tokenizer=data.get("tokenizer"),
             runtime=data.get("runtime"),
+            reputation_policy=IdentReputationPolicyHint.from_dict(rp_raw) if rp_raw else None,
         )
 
 
@@ -79,6 +102,9 @@ class IdentFrame(NpsFrame):
     cert_format:  str | None = None
     cert_chain:   tuple[str, ...] | None = None
 
+    # NIP v0.9 §5.1 — Optional OCSP staple (base64url DER-encoded OCSP response).
+    ocsp_staple:  str | None = None
+
     @property
     def frame_type(self) -> FrameType:
         return FrameType.IDENT
@@ -108,6 +134,8 @@ class IdentFrame(NpsFrame):
             d["cert_format"] = self.cert_format
         if self.cert_chain is not None:
             d["cert_chain"] = list(self.cert_chain)
+        if self.ocsp_staple is not None:
+            d["ocsp_staple"] = self.ocsp_staple
         return d
 
     @classmethod
@@ -135,6 +163,7 @@ class IdentFrame(NpsFrame):
             assurance_level=level,
             cert_format=data.get("cert_format"),
             cert_chain=chain,
+            ocsp_staple=data.get("ocsp_staple"),
         )
 
     def unsigned_dict(self) -> dict[str, Any]:

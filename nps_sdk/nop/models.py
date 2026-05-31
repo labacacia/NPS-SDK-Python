@@ -25,6 +25,8 @@ class TaskState(str, Enum):
     FAILED        = "failed"
     CANCELLED     = "cancelled"
     SKIPPED       = "skipped"
+    COMPENSATING  = "compensating"
+    COMPENSATED   = "compensated"
 
 
 class TaskPriority:
@@ -33,11 +35,19 @@ class TaskPriority:
     HIGH   = "high"
 
 
+class CompensationPolicy:
+    NONE       = "none"
+    ON_FAILURE = "on_failure"
+    ALWAYS     = "always"
+
+
 class AggregateStrategy:
-    MERGE     = "merge"
-    FIRST     = "first"
-    ALL       = "all"
-    FASTEST_K = "fastest_k"
+    MERGE            = "merge"
+    FIRST            = "first"
+    ALL              = "all"
+    FASTEST_K        = "fastest_k"
+    WEIGHTED_FIRST_K = "weighted_first_k"
+    MERGE_ALL        = "merge_all"
 
 
 class BackoffStrategy:
@@ -166,6 +176,8 @@ class DagNode:
     retry_policy:  RetryPolicy | None = None
     condition:     str | None = None
     min_required:  int = 0
+    compensate_action:         str | None = None
+    compensate_params_mapping: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -185,6 +197,10 @@ class DagNode:
             d["condition"] = self.condition
         if self.min_required:
             d["min_required"] = self.min_required
+        if self.compensate_action is not None:
+            d["compensate_action"] = self.compensate_action
+        if self.compensate_params_mapping is not None:
+            d["compensate_params_mapping"] = self.compensate_params_mapping
         return d
 
     @classmethod
@@ -200,6 +216,8 @@ class DagNode:
             retry_policy=RetryPolicy.from_dict(rp_raw) if rp_raw else None,
             condition=data.get("condition"),
             min_required=int(data.get("min_required", 0)),
+            compensate_action=data.get("compensate_action"),
+            compensate_params_mapping=data.get("compensate_params_mapping"),
         )
 
 

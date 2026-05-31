@@ -13,10 +13,12 @@ from nps_sdk.ndp.frames import (
     AnnounceFrame,
     GraphFrame,
     NdpAddress,
+    NdpGraphEdge,
     NdpGraphNode,
     NdpResolveResult,
     ResolveFrame,
 )
+from nps_sdk.ndp.security import SecurityProfile
 from nps_sdk.ndp.registry import InMemoryNdpRegistry
 from nps_sdk.ndp.validator import NdpAnnounceResult, NdpAnnounceValidator
 from nps_sdk.ndp import error_codes
@@ -28,12 +30,14 @@ __all__ = [
     "DnsTxtLookup",
     "GraphFrame",
     "NdpAddress",
+    "NdpGraphEdge",
     "NdpGraphNode",
     "NdpResolveResult",
     "ResolveFrame",
     "InMemoryNdpRegistry",
     "NdpAnnounceResult",
     "NdpAnnounceValidator",
+    "SecurityProfile",
     "SystemDnsTxtLookup",
     "parse_nps_txt_record",
     "error_codes",

@@ -67,30 +67,49 @@ class NdpResolveResult:
 
 @dataclasses.dataclass(frozen=True)
 class NdpGraphNode:
-    """A single node entry within a GraphFrame (NPS-4 §5.3)."""
-
-    nid:          str
-    addresses:    tuple[NdpAddress, ...]
-    capabilities: tuple[str, ...]
-    node_type:    str | None = None
+    """A node entry in a topology GraphFrame (NPS-4 §5)."""
+    nid:             str
+    cluster_anchor:  str | None = None
+    node_roles:      tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {
-            "nid":          self.nid,
-            "addresses":    [a.to_dict() for a in self.addresses],
-            "capabilities": list(self.capabilities),
-        }
-        if self.node_type is not None:
-            d["node_type"] = self.node_type
+        d: dict[str, Any] = {"nid": self.nid}
+        if self.cluster_anchor is not None:
+            d["cluster_anchor"] = self.cluster_anchor
+        if self.node_roles:
+            d["node_roles"] = list(self.node_roles)
         return d
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "NdpGraphNode":
         return cls(
             nid=data["nid"],
-            addresses=tuple(NdpAddress.from_dict(a) for a in data.get("addresses", [])),
-            capabilities=tuple(data.get("capabilities", [])),
-            node_type=data.get("node_type"),
+            cluster_anchor=data.get("cluster_anchor"),
+            node_roles=tuple(data.get("node_roles", [])),
+        )
+
+
+# ── NdpGraphEdge ─────────────────────────────────────────────────────────────
+
+@dataclasses.dataclass(frozen=True)
+class NdpGraphEdge:
+    """A directed edge in a topology GraphFrame (NPS-4 §5)."""
+    from_nid:    str
+    to_nid:      str
+    latency_ms:  int | None = None
+    protocol:    str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"from_nid": self.from_nid, "to_nid": self.to_nid}
+        if self.latency_ms is not None: d["latency_ms"] = self.latency_ms
+        if self.protocol is not None: d["protocol"] = self.protocol
+        return d
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "NdpGraphEdge":
+        return cls(
+            from_nid=data["from_nid"], to_nid=data["to_nid"],
+            latency_ms=data.get("latency_ms"), protocol=data.get("protocol"),
         )
 
 
@@ -225,17 +244,12 @@ class ResolveFrame(NpsFrame):
 
 @dataclasses.dataclass(frozen=True)
 class GraphFrame(NpsFrame):
-    """
-    Node graph synchronization frame (NPS-4 §5.3).
-
-    initial_sync=True carries a full node list; False carries a JSON Patch delta.
-    seq is strictly monotonically increasing per sender.
-    """
-
-    seq:          int
-    initial_sync: bool
-    nodes:        tuple[NdpGraphNode, ...] | None = None   # full sync
-    patch:        Any = None                                # JSON Patch list (incremental)
+    """Topology graph snapshot frame (NPS-4 §5). Max 256 nodes, 1024 edges."""
+    graph_id:  str
+    nodes:     tuple[NdpGraphNode, ...]
+    edges:     tuple[NdpGraphEdge, ...]
+    ttl:       int
+    metadata:  dict[str, Any] | None = None
 
     @property
     def frame_type(self) -> FrameType:
@@ -247,21 +261,21 @@ class GraphFrame(NpsFrame):
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
-            "seq":          self.seq,
-            "initial_sync": self.initial_sync,
+            "graph_id": self.graph_id,
+            "nodes": [n.to_dict() for n in self.nodes],
+            "edges": [e.to_dict() for e in self.edges],
+            "ttl": self.ttl,
         }
-        if self.nodes is not None:
-            d["nodes"] = [n.to_dict() for n in self.nodes]
-        if self.patch is not None:
-            d["patch"] = self.patch
+        if self.metadata is not None:
+            d["metadata"] = self.metadata
         return d
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "GraphFrame":
-        nodes_raw = data.get("nodes")
         return cls(
-            seq=int(data["seq"]),
-            initial_sync=bool(data["initial_sync"]),
-            nodes=tuple(NdpGraphNode.from_dict(n) for n in nodes_raw) if nodes_raw else None,
-            patch=data.get("patch"),
+            graph_id=data["graph_id"],
+            nodes=tuple(NdpGraphNode.from_dict(n) for n in data.get("nodes", [])),
+            edges=tuple(NdpGraphEdge.from_dict(e) for e in data.get("edges", [])),
+            ttl=int(data["ttl"]),
+            metadata=data.get("metadata"),
         )

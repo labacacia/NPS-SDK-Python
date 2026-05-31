@@ -183,40 +183,44 @@ class TestResolveFrame:
 
 class TestGraphFrame:
     def test_frame_type(self):
-        frame = GraphFrame(seq=1, initial_sync=True)
+        frame = GraphFrame(graph_id="g1", nodes=(), edges=(), ttl=60)
         assert frame.frame_type == FrameType.GRAPH
 
     def test_full_sync_roundtrip(self, codec):
+        from nps_sdk.ndp.frames import NdpGraphEdge
         frame = GraphFrame(
-            seq=1,
-            initial_sync=True,
+            graph_id="g1",
             nodes=(
                 NdpGraphNode(
                     nid="urn:nps:node:api.example.com:products",
-                    addresses=(NdpAddress(host="api.example.com", port=443, protocol="https"),),
-                    capabilities=("nwp:query",),
-                    node_type="memory",
+                    cluster_anchor="urn:nps:node:anchor.example.com",
+                    node_roles=("worker",),
                 ),
             ),
+            edges=(
+                NdpGraphEdge(
+                    from_nid="urn:nps:node:api.example.com:products",
+                    to_nid="urn:nps:node:anchor.example.com",
+                    latency_ms=5,
+                ),
+            ),
+            ttl=300,
         )
         out = codec.decode(codec.encode(frame))
         assert isinstance(out, GraphFrame)
-        assert out.initial_sync is True
-        assert out.seq == 1
+        assert out.graph_id == "g1"
+        assert out.ttl == 300
         assert len(out.nodes) == 1
         assert out.nodes[0].nid == "urn:nps:node:api.example.com:products"
+        assert len(out.edges) == 1
+        assert out.edges[0].from_nid == "urn:nps:node:api.example.com:products"
 
-    def test_incremental_roundtrip(self, codec):
-        frame = GraphFrame(
-            seq=2,
-            initial_sync=False,
-            patch=[{"op": "add", "path": "/nodes/-", "value": {"nid": "urn:nps:node:x:y"}}],
-        )
+    def test_empty_graph_roundtrip(self, codec):
+        frame = GraphFrame(graph_id="g2", nodes=(), edges=(), ttl=60, metadata={"version": "1"})
         out = codec.decode(codec.encode(frame))
         assert isinstance(out, GraphFrame)
-        assert out.initial_sync is False
-        assert out.nodes is None
-        assert out.patch is not None
+        assert out.graph_id == "g2"
+        assert out.metadata == {"version": "1"}
 
 
 # ── InMemoryNdpRegistry ───────────────────────────────────────────────────────

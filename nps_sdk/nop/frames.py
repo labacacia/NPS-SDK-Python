@@ -42,6 +42,7 @@ class TaskFrame(NpsFrame):
     context:        TaskContext | None = None
     request_id:     str | None = None
     delegate_depth: int     = 0
+    compensation_policy: str = "none"   # "none" | "on_failure" | "always"
 
     @property
     def frame_type(self) -> FrameType:
@@ -67,6 +68,8 @@ class TaskFrame(NpsFrame):
             d["context"] = self.context.to_dict()
         if self.request_id is not None:
             d["request_id"] = self.request_id
+        if self.compensation_policy != "none":
+            d["compensation_policy"] = self.compensation_policy
         return d
 
     @classmethod
@@ -83,6 +86,7 @@ class TaskFrame(NpsFrame):
             context=TaskContext.from_dict(ctx_raw) if ctx_raw else None,
             request_id=data.get("request_id"),
             delegate_depth=int(data.get("delegate_depth", 0)),
+            compensation_policy=data.get("compensation_policy", "none"),
         )
 
 
@@ -109,6 +113,7 @@ class DelegateFrame(NpsFrame):
     priority:        str | None = None
     context:         TaskContext | None = None
     delegate_depth:  int = 1
+    target_cluster_anchor: str | None = None   # NID of remote cluster Anchor (alpha.11)
 
     @property
     def frame_type(self) -> FrameType:
@@ -129,10 +134,11 @@ class DelegateFrame(NpsFrame):
             "deadline_at":      self.deadline_at,
             "delegate_depth":   self.delegate_depth,
         }
-        if self.params          is not None: d["params"]           = self.params
-        if self.idempotency_key is not None: d["idempotency_key"]  = self.idempotency_key
-        if self.priority        is not None: d["priority"]         = self.priority
-        if self.context         is not None: d["context"]          = self.context.to_dict()
+        if self.params                is not None: d["params"]                = self.params
+        if self.idempotency_key       is not None: d["idempotency_key"]       = self.idempotency_key
+        if self.priority              is not None: d["priority"]              = self.priority
+        if self.context               is not None: d["context"]               = self.context.to_dict()
+        if self.target_cluster_anchor is not None: d["target_cluster_anchor"] = self.target_cluster_anchor
         return d
 
     @classmethod
@@ -151,6 +157,7 @@ class DelegateFrame(NpsFrame):
             priority=data.get("priority"),
             context=TaskContext.from_dict(ctx_raw) if ctx_raw else None,
             delegate_depth=int(data.get("delegate_depth", 1)),
+            target_cluster_anchor=data.get("target_cluster_anchor"),
         )
 
 
@@ -243,6 +250,8 @@ class AlignStreamFrame(NpsFrame):
     payload_ref: str | None = None
     window_size: int | None = None
     error:       StreamError | None = None   # non-null when is_final=True and failed
+    ack_seq:     int | None = None   # acknowledgment of received seq (alpha.11)
+    nak_seq:     int | None = None   # negative-ack, request retransmit from this seq+1 (alpha.11)
 
     @property
     def frame_type(self) -> FrameType:
@@ -265,6 +274,8 @@ class AlignStreamFrame(NpsFrame):
         if self.payload_ref is not None: d["payload_ref"] = self.payload_ref
         if self.window_size is not None: d["window_size"] = self.window_size
         if self.error       is not None: d["error"]       = self.error.to_dict()
+        if self.ack_seq     is not None: d["ack_seq"]     = self.ack_seq
+        if self.nak_seq     is not None: d["nak_seq"]     = self.nak_seq
         return d
 
     @classmethod
@@ -281,4 +292,6 @@ class AlignStreamFrame(NpsFrame):
             payload_ref=data.get("payload_ref"),
             window_size=data.get("window_size"),
             error=StreamError.from_dict(err_raw) if err_raw else None,
+            ack_seq=data.get("ack_seq"),
+            nak_seq=data.get("nak_seq"),
         )
