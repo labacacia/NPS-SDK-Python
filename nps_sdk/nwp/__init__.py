@@ -11,6 +11,7 @@ from nps_sdk.nwp.frames import (
     ActionFrame,
     AsyncActionResponse,
     QueryFrame,
+    SubscribeFrame,
     TopologyEvent,
     TopologyMember,
     TopologySnapshotRequest,
@@ -70,6 +71,7 @@ __all__ = [
     "TopologyStreamRequest",
     "ActionFrame",
     "AsyncActionResponse",
+    "SubscribeFrame",
     "NwpClient",
     # error codes
     "error_codes",

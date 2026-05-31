@@ -341,3 +341,42 @@ class AsyncActionResponse:
             status=data["status"],
             poll_url=data["poll_url"],
         )
+
+
+# ── SubscribeFrame (0x12) ─────────────────────────────────────────────────────
+
+@dataclasses.dataclass(frozen=True)
+class SubscribeFrame(NpsFrame):
+    """Event subscription frame (NWP v0.13, alpha.11)."""
+
+    subscription_id:       str
+    filter:                dict[str, Any] | None = None
+    heartbeat_interval_ms: int | None = None
+    max_events:            int | None = None
+    cursor:                str | None = None
+
+    @property
+    def frame_type(self) -> FrameType:
+        return FrameType.SUBSCRIBE
+
+    @property
+    def preferred_tier(self) -> EncodingTier:
+        return EncodingTier.MSGPACK
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"subscription_id": self.subscription_id}
+        if self.filter                is not None: d["filter"]                = self.filter
+        if self.heartbeat_interval_ms is not None: d["heartbeat_interval_ms"] = self.heartbeat_interval_ms
+        if self.max_events            is not None: d["max_events"]            = self.max_events
+        if self.cursor                is not None: d["cursor"]                = self.cursor
+        return d
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "SubscribeFrame":
+        return cls(
+            subscription_id=data["subscription_id"],
+            filter=data.get("filter"),
+            heartbeat_interval_ms=data.get("heartbeat_interval_ms"),
+            max_events=data.get("max_events"),
+            cursor=data.get("cursor"),
+        )
