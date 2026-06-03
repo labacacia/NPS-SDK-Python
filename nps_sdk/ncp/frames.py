@@ -301,6 +301,7 @@ class HelloFrame(NpsFrame):
     ext_support:            bool                    = False
     max_concurrent_streams: int                     = 32
     e2e_enc_algorithms:     tuple[str, ...] | None  = None
+    ping_interval_ms:       int                     = 0
 
     @property
     def frame_type(self) -> FrameType:
@@ -318,6 +319,7 @@ class HelloFrame(NpsFrame):
             "max_frame_payload":      self.max_frame_payload,
             "ext_support":            self.ext_support,
             "max_concurrent_streams": self.max_concurrent_streams,
+            "ping_interval_ms":       self.ping_interval_ms,
         }
         if self.min_version        is not None: d["min_version"]        = self.min_version
         if self.agent_id           is not None: d["agent_id"]           = self.agent_id
@@ -341,7 +343,37 @@ class HelloFrame(NpsFrame):
                 if data.get("e2e_enc_algorithms") is not None
                 else None
             ),
+            ping_interval_ms=int(data.get("ping_interval_ms", 0)),
         )
+
+
+# ── NopFrame (0x07) ─────────────────────────────────────────────────────────
+
+@dataclasses.dataclass(frozen=True)
+class NopFrame(NpsFrame):
+    """
+    Keepalive / heartbeat frame (NCP v0.8 §4.8 / §7.5).
+
+    Carries no payload. Either peer MAY send at any time after handshake;
+    the receiver MUST accept and SHOULD reply with another NopFrame.
+    When HelloFrame.ping_interval_ms is non-zero, both peers SHOULD send at
+    that interval. Dead-peer detection fires after 3 × ping_interval_ms.
+    """
+
+    @property
+    def frame_type(self) -> FrameType:
+        return FrameType.NOP
+
+    @property
+    def preferred_tier(self) -> EncodingTier:
+        return EncodingTier.JSON
+
+    def to_dict(self) -> dict[str, Any]:
+        return {}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "NopFrame":
+        return cls()
 
 
 # ── ErrorFrame (0xFE) ────────────────────────────────────────────────────────

@@ -19,6 +19,9 @@ from nps_sdk.core.frames import EncodingTier, FrameType
 NWP_TOPOLOGY_SNAPSHOT = "topology.snapshot"
 NWP_TOPOLOGY_STREAM = "topology.stream"
 
+# NWP v0.14 §4.1 — NWM manifest versioning response header
+X_NWM_VERSION = "X-NWM-Version"
+
 
 # ── QueryFrame helpers ────────────────────────────────────────────────────────
 

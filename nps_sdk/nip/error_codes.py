@@ -63,6 +63,9 @@ ACME_CHALLENGE_FAILED     = "NIP-ACME-CHALLENGE-FAILED"
 # ── Chain / parent revocation (NPS-3 §5.1.3 / NPS-CR-0003) ──────────────────
 CERT_PARENT_REVOKED       = "NIP-CERT-PARENT-REVOKED"
 
+# ── NIP v0.10 ────────────────────────────────────────────────────────────────
+CERT_NODE_ROLES_MISMATCH  = "NIP-CERT-NODE-ROLES-MISMATCH"
+
 # ── NPS status mapping ────────────────────────────────────────────────────────
 from nps_sdk.core.status_codes import (  # noqa: E402
     NPS_AUTH_FORBIDDEN,
@@ -116,4 +119,5 @@ NIP_ERROR_TO_NPS_STATUS: dict[str, str] = {
     REPUTATION_GOSSIP_FORK:             NPS_SERVER_INTERNAL,
     REPUTATION_GOSSIP_SIG_INVALID:      NPS_CLIENT_BAD_FRAME,
     ACME_CHALLENGE_FAILED:              NPS_CLIENT_BAD_FRAME,
+    CERT_NODE_ROLES_MISMATCH:           NPS_CLIENT_BAD_FRAME,
 }

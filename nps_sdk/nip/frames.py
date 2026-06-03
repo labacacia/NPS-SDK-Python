@@ -105,6 +105,9 @@ class IdentFrame(NpsFrame):
     # NIP v0.9 §5.1 — Optional OCSP staple (base64url DER-encoded OCSP response).
     ocsp_staple:  str | None = None
 
+    # NIP v0.10 §5.1.4 — Self-declared node-role tags (Phase 1-2 informational).
+    node_roles: tuple[str, ...] | None = None
+
     @property
     def frame_type(self) -> FrameType:
         return FrameType.IDENT
@@ -136,6 +139,8 @@ class IdentFrame(NpsFrame):
             d["cert_chain"] = list(self.cert_chain)
         if self.ocsp_staple is not None:
             d["ocsp_staple"] = self.ocsp_staple
+        if self.node_roles is not None:
+            d["node_roles"] = list(self.node_roles)
         return d
 
     @classmethod
@@ -164,6 +169,9 @@ class IdentFrame(NpsFrame):
             cert_format=data.get("cert_format"),
             cert_chain=chain,
             ocsp_staple=data.get("ocsp_staple"),
+            node_roles=(
+                tuple(data["node_roles"]) if data.get("node_roles") else None
+            ),
         )
 
     def unsigned_dict(self) -> dict[str, Any]:

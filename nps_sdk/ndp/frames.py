@@ -134,10 +134,11 @@ class AnnounceFrame(NpsFrame):
     node_type:    str | None = None
     node_roles:           tuple[str, ...] | None = None
     cluster_anchor:       str | None = None
-    spawn_spec_ref:       str | None = None
+    spawn_spec_ref:       dict[str, Any] | None = None  # NdpSpawnSpecRef (NDP v0.9 §3.1.1)
     bridge_protocols:     tuple[str, ...] | None = None
     activation_mode:      str | None = None
     activation_endpoint:  str | None = None
+    heartbeat_interval_ms: int = 60_000  # NDP v0.9 §3.1
 
     @property
     def frame_type(self) -> FrameType:
@@ -176,6 +177,7 @@ class AnnounceFrame(NpsFrame):
             d["activation_mode"] = self.activation_mode
         if self.activation_endpoint is not None:
             d["activation_endpoint"] = self.activation_endpoint
+        d["heartbeat_interval_ms"] = self.heartbeat_interval_ms
         return d
 
     @classmethod
@@ -197,6 +199,7 @@ class AnnounceFrame(NpsFrame):
             bridge_protocols=tuple(bridge_protocols_raw) if bridge_protocols_raw is not None else None,
             activation_mode=data.get("activation_mode"),
             activation_endpoint=data.get("activation_endpoint"),
+            heartbeat_interval_ms=int(data.get("heartbeat_interval_ms", 60_000)),
         )
 
 

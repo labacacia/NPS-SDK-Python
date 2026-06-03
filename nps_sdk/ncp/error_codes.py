@@ -36,12 +36,17 @@ NCP_ENC_AUTH_FAILED    = "NCP-ENC-AUTH-FAILED"
 NCP_VERSION_INCOMPATIBLE = "NCP-VERSION-INCOMPATIBLE"
 NCP_PREAMBLE_INVALID     = "NCP-PREAMBLE-INVALID"
 
+# ── NCP v0.8 ──────────────────────────────────────────────────────────────────
+NCP_KEEPALIVE_TIMEOUT    = "NCP-KEEPALIVE-TIMEOUT"   # dead-peer 3×ping_interval_ms
+NCP_REKEY_REQUIRED       = "NCP-REKEY-REQUIRED"      # E2E rekey before 2^32 frames / 24 h
+
 # ── NPS status mapping ────────────────────────────────────────────────────────
 from nps_sdk.core.status_codes import (  # noqa: E402
     NPS_CLIENT_NOT_FOUND,
     NPS_CLIENT_BAD_FRAME,
     NPS_CLIENT_CONFLICT,
     NPS_LIMIT_PAYLOAD,
+    NPS_SERVER_TIMEOUT,
     NPS_STREAM_SEQ_GAP,
     NPS_STREAM_NOT_FOUND,
     NPS_STREAM_LIMIT,
@@ -68,4 +73,6 @@ NCP_ERROR_TO_NPS_STATUS: dict[str, str] = {
     NCP_ENC_AUTH_FAILED:          NPS_CLIENT_BAD_FRAME,
     NCP_VERSION_INCOMPATIBLE:     NPS_PROTO_VERSION_INCOMPATIBLE,
     NCP_PREAMBLE_INVALID:         NPS_PROTO_PREAMBLE_INVALID,
+    NCP_KEEPALIVE_TIMEOUT:        NPS_SERVER_TIMEOUT,
+    NCP_REKEY_REQUIRED:           NPS_PROTO_VERSION_INCOMPATIBLE,
 }

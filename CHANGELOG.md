@@ -8,6 +8,24 @@ Until NPS reaches v1.0 stable, every repository in the suite is synchronized to 
 
 ---
 
+## [1.0.0-alpha.12] — 2026-06-03
+
+### Added
+
+- **NCP — `FrameType.NOP` (0x07) + `NopFrame`**: Keepalive/heartbeat frame, no payload. Both peers MAY send after handshake; receiver MUST accept and SHOULD reply (NCP v0.8 §4.8).
+- **NCP — `HelloFrame.ping_interval_ms`**: New `int` field (default 0 = disabled). When non-zero, peers SHOULD send `NopFrame` at this interval; dead-peer threshold is 3× value.
+- **NCP — `NCP_KEEPALIVE_TIMEOUT` / `NCP_REKEY_REQUIRED`**: New error code constants in `nps_sdk.ncp.error_codes`.
+- **NIP — `IdentFrame.node_roles`**: New optional `tuple[str, ...] | None` field (`node_roles`). Self-declared Phase 1–2; Phase 3 CA-attested via OID 65715.2.2.
+- **NIP — `CERT_NODE_ROLES_MISMATCH`**: New error code constant in `nps_sdk.nip.error_codes`.
+- **NDP — `AnnounceFrame.heartbeat_interval_ms`**: New `int` field, default 60000 (NDP v0.9 §3.1). Registries should mark node stale after 2× interval with `NDP-ANNOUNCE-STALE`.
+- **NDP — `AnnounceFrame.spawn_spec_ref` type change**: Field changed from `str | None` to `dict[str, Any] | None` to accept the structured NDP v0.9 §3.1.1 schema (`oci_image`, `command`, `resource_limits`).
+- **NDP — `NDP_ANNOUNCE_STALE`**: New error code constant in `nps_sdk.ndp.error_codes`.
+- **NWP — `X_NWM_VERSION`**: New constant `"X-NWM-Version"` in `nps_sdk.nwp.frames` (NWP v0.14 §4.1).
+- **NOP — `TaskFrame.result_ttl_seconds`**: New `int` field, default 3600 (NOP v0.7). After TTL, result queries return `NOP-TASK-RESULT-EXPIRED`.
+- **NOP — `NOP_TASK_RESULT_EXPIRED` / `NOP_STREAM_NAK_UNRESOLVABLE`**: New error code constants in `nps_sdk.nop.error_codes`.
+
+---
+
 ## [1.0.0-alpha.11] — 2026-05-31
 
 ### Added

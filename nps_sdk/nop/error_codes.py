@@ -39,8 +39,14 @@ NOP_INPUT_MAPPING_ERROR     = "NOP-INPUT-MAPPING-ERROR"
 NOP_COMPENSATION_FAILED     = "NOP-COMPENSATION-FAILED"
 NOP_COMPENSATION_NOT_SUPPORTED = "NOP-COMPENSATION-NOT-SUPPORTED"
 
-# ── Webhook / callback (alpha.11+) ────────────────────────────────────────────
+# ── Webhook / callback (NOP v0.6) ────────────────────────────────────────────
 NOP_CALLBACK_HMAC_MISSING = "NOP-CALLBACK-HMAC-MISSING"
+
+# ── Result retention (NOP v0.7) ───────────────────────────────────────────────
+NOP_TASK_RESULT_EXPIRED = "NOP-TASK-RESULT-EXPIRED"
+
+# ── AlignStream NAK (NOP v0.7) ────────────────────────────────────────────────
+NOP_STREAM_NAK_UNRESOLVABLE = "NOP-STREAM-NAK-UNRESOLVABLE"
 
 # ── NPS status mapping ────────────────────────────────────────────────────────
 from nps_sdk.core.status_codes import (  # noqa: E402
@@ -79,4 +85,6 @@ NOP_ERROR_TO_NPS_STATUS: dict[str, str] = {
     NOP_COMPENSATION_FAILED:       NPS_CLIENT_UNPROCESSABLE,
     NOP_COMPENSATION_NOT_SUPPORTED: NPS_CLIENT_UNPROCESSABLE,
     NOP_CALLBACK_HMAC_MISSING:     NPS_AUTH_UNAUTHENTICATED,
+    NOP_TASK_RESULT_EXPIRED:       NPS_CLIENT_NOT_FOUND,
+    NOP_STREAM_NAK_UNRESOLVABLE:   NPS_STREAM_SEQ_GAP,
 }

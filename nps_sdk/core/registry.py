@@ -48,6 +48,7 @@ class FrameRegistry:
             StreamFrame,
             CapsFrame,
             HelloFrame,
+            NopFrame,
             ErrorFrame,
         )
 
@@ -58,6 +59,7 @@ class FrameRegistry:
                 FrameType.STREAM: StreamFrame,
                 FrameType.CAPS:   CapsFrame,
                 FrameType.HELLO:  HelloFrame,
+                FrameType.NOP:    NopFrame,
                 FrameType.ERROR:  ErrorFrame,
             }
         )

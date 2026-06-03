@@ -42,7 +42,8 @@ class TaskFrame(NpsFrame):
     context:        TaskContext | None = None
     request_id:     str | None = None
     delegate_depth: int     = 0
-    compensation_policy: str = "none"   # "none" | "on_failure" | "always"
+    compensation_policy:  str = "none"   # "none" | "on_failure" | "always"
+    result_ttl_seconds:   int = 3600     # NOP v0.7 §3.1
 
     @property
     def frame_type(self) -> FrameType:
@@ -70,6 +71,7 @@ class TaskFrame(NpsFrame):
             d["request_id"] = self.request_id
         if self.compensation_policy != "none":
             d["compensation_policy"] = self.compensation_policy
+        d["result_ttl_seconds"] = self.result_ttl_seconds
         return d
 
     @classmethod
@@ -87,6 +89,7 @@ class TaskFrame(NpsFrame):
             request_id=data.get("request_id"),
             delegate_depth=int(data.get("delegate_depth", 0)),
             compensation_policy=data.get("compensation_policy", "none"),
+            result_ttl_seconds=int(data.get("result_ttl_seconds", 3600)),
         )
 
 
