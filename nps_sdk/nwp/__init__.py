@@ -57,6 +57,18 @@ from nps_sdk.nwp.reputation import (
     DefaultReputationEvaluator,
     default_reputation_evaluator,
 )
+from nps_sdk.nwp.anchor_server import (
+    AnchorNodeApp,
+    AnchorNodeOptions,
+    AnchorActionSpec,
+    AnchorActionError,
+    AnchorInvokeHandler,
+    AnchorTopologyService,
+    InMemoryAnchorTopologyService,
+    AnchorRateLimiter,
+    AllowAllRateLimiter,
+    InvokeContext,
+)
 
 __all__ = [
     "NWP_TOPOLOGY_SNAPSHOT",
@@ -108,4 +120,15 @@ __all__ = [
     "IReputationEvaluator",
     "DefaultReputationEvaluator",
     "default_reputation_evaluator",
+    # Anchor Node server (alpha.12 client+server parity)
+    "AnchorNodeApp",
+    "AnchorNodeOptions",
+    "AnchorActionSpec",
+    "AnchorActionError",
+    "AnchorInvokeHandler",
+    "AnchorTopologyService",
+    "InMemoryAnchorTopologyService",
+    "AnchorRateLimiter",
+    "AllowAllRateLimiter",
+    "InvokeContext",
 ]

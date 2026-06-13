@@ -22,7 +22,10 @@ from nps_sdk.nwp.reputation import (
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    # asyncio.run() creates a fresh event loop per call; the previous
+    # get_event_loop().run_until_complete() pattern fails once another async
+    # test (pytest-asyncio auto mode) has closed the shared loop.
+    return asyncio.run(coro)
 
 
 # ── Policy type defaults ──────────────────────────────────────────────────────
