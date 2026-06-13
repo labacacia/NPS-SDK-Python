@@ -141,7 +141,7 @@ __all__ = [
     "NodeRequest",
     "NodeResponse",
     "MemoryNodeServer",
-    # Anchor Node server (alpha.12 client+server parity)
+    # Anchor Node server (alpha.13 client+server parity)
     "AnchorNodeApp",
     "AnchorNodeOptions",
     "AnchorActionSpec",

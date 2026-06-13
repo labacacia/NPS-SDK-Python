@@ -8,7 +8,7 @@ PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 
 ## 状态
 
-**v1.0.0-alpha.12 —— RFC-0002 跨 SDK 端口波（第二棒语言）**
+**v1.0.0-alpha.13 —— RFC-0002 跨 SDK 端口波（第二棒语言）**
 
 包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端，**加完整 NPS-RFC-0002 X.509 + ACME `agent-01` NID 证书原语**（`nps_sdk.nip.x509` + `nps_sdk.nip.acme`）。
 

@@ -8,7 +8,7 @@ Until NPS reaches v1.0 stable, every repository in the suite is synchronized to 
 
 ---
 
-## [1.0.0-alpha.12] — 2026-06-13
+## [1.0.0-alpha.13] — 2026-06-13
 
 ### Added
 - **NWP functional parity** — CGN / token-budget meter, Bridge Node types, RFC-0005

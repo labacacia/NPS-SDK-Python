@@ -3,7 +3,7 @@ English | [中文版](./overview.cn.md)
 # NPS Python SDK — Overview
 
 > **PyPI**: [`nps-lib`](https://pypi.org/project/nps-lib/) · **Import namespace**: `nps_sdk` · **Python**: ≥ 3.11
-> **Version**: 1.0.0-alpha.12 · **License**: Apache-2.0
+> **Version**: 1.0.0-alpha.13 · **License**: Apache-2.0
 > **Spec**: [NPS-0 Overview](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-0-Overview.md)
 
 This SDK is the async Python implementation of the **Neural Protocol Suite** —
