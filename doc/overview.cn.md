@@ -3,7 +3,7 @@
 # NPS Python SDK — 总览
 
 > **PyPI**：[`nps-lib`](https://pypi.org/project/nps-lib/) · **导入命名空间**：`nps_sdk` · **Python**：≥ 3.11
-> **版本**：1.0.0-alpha.11 · **许可证**：Apache-2.0
+> **版本**：1.0.0-alpha.12 · **许可证**：Apache-2.0
 > **规范**：[NPS-0 Overview](https://github.com/labacacia/NPS-Release/blob/main/spec/NPS-0-Overview.cn.md)
 
 本 SDK 是 **Neural Protocol Suite** 的异步 Python 实现 ——
