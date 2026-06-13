@@ -8,7 +8,7 @@ PyPI package: `nps-lib` | Python namespace: `nps_sdk`
 
 ## Status
 
-**v1.0.0-alpha.11 — RFC-0002 cross-SDK port (second language)**
+**v1.0.0-alpha.12 — RFC-0002 cross-SDK port (second language)**
 
 Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, Ed25519 identity management, **plus full NPS-RFC-0002 X.509 + ACME `agent-01` NID certificate primitives** (`nps_sdk.nip.x509` + `nps_sdk.nip.acme`).
 

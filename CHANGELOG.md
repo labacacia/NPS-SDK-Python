@@ -8,6 +8,16 @@ Until NPS reaches v1.0 stable, every repository in the suite is synchronized to 
 
 ---
 
+## [1.0.0-alpha.12] — 2026-06-13
+
+### Added
+- **NWP functional parity** — CGN / token-budget meter, Bridge Node types, RFC-0005
+  reputation policy types + `DefaultReputationEvaluator`, NWP error/status codes.
+- **Anchor Node server** (`AnchorNodeApp`, pure ASGI) — the client→server upgrade.
+- **Memory Node server** (`MemoryNodeServer`) — shipped from the monorepo `impl/`.
+- **NDP v0.9** — `AnnounceFrame.health` / `last_seen` liveness fields, on the wire
+  but excluded from the signed canonical form (last_seen updates per heartbeat).
+
 ## [1.0.0-alpha.8] — 2026-05-28
 
 ### Tracking the suite
