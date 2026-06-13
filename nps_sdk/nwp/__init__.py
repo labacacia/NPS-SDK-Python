@@ -57,6 +57,17 @@ from nps_sdk.nwp.reputation import (
     DefaultReputationEvaluator,
     default_reputation_evaluator,
 )
+from nps_sdk.nwp.memory_node_server import (
+    MemoryNodeField,
+    MemoryNodeSchema,
+    MemoryNodeOptions,
+    MemoryNodeRow,
+    MemoryNodeQueryResult,
+    IMemoryNodeProvider,
+    NodeRequest,
+    NodeResponse,
+    MemoryNodeServer,
+)
 from nps_sdk.nwp.anchor_server import (
     AnchorNodeApp,
     AnchorNodeOptions,
@@ -120,6 +131,16 @@ __all__ = [
     "IReputationEvaluator",
     "DefaultReputationEvaluator",
     "default_reputation_evaluator",
+    # Memory Node server
+    "MemoryNodeField",
+    "MemoryNodeSchema",
+    "MemoryNodeOptions",
+    "MemoryNodeRow",
+    "MemoryNodeQueryResult",
+    "IMemoryNodeProvider",
+    "NodeRequest",
+    "NodeResponse",
+    "MemoryNodeServer",
     # Anchor Node server (alpha.12 client+server parity)
     "AnchorNodeApp",
     "AnchorNodeOptions",
