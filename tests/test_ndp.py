@@ -105,6 +105,25 @@ class TestAnnounceFrame:
         assert "nid" in d
         assert "addresses" in d
 
+    def test_liveness_fields_wire_only_excluded_from_signing(self, identity):
+        # NDP v0.9 health/last_seen: on the wire, but NOT in the signed canonical form
+        # (last_seen updates every heartbeat → must not require re-signing).
+        base = _make_announce(identity)
+        frame = AnnounceFrame(
+            nid=base.nid, addresses=base.addresses, capabilities=base.capabilities,
+            ttl=base.ttl, timestamp=base.timestamp, signature=base.signature,
+            node_type=base.node_type, health="draining", last_seen="2026-06-13T00:00:00Z",
+        )
+        d = frame.to_dict()
+        assert d["health"] == "draining"
+        assert d["last_seen"] == "2026-06-13T00:00:00Z"
+        u = frame.unsigned_dict()
+        assert "health" not in u and "last_seen" not in u
+        # Signs bit-identically to the same frame without liveness fields.
+        assert u == base.unsigned_dict()
+        out = AnnounceFrame.from_dict(d)
+        assert out.health == "draining" and out.last_seen == "2026-06-13T00:00:00Z"
+
     def test_roundtrip_json(self, identity, codec):
         frame = _make_announce(identity)
         wire  = codec.encode(frame, override_tier=EncodingTier.JSON)

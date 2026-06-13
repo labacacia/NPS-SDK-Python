@@ -138,6 +138,10 @@ class AnnounceFrame(NpsFrame):
     bridge_protocols:     tuple[str, ...] | None = None
     activation_mode:      str | None = None
     activation_endpoint:  str | None = None
+    # NDP v0.9 liveness fields — wire-only, EXCLUDED from the signed canonical form
+    # (last_seen updates every heartbeat, so it must not require a re-sign; §3.2.1).
+    health:               str | None = None  # "healthy" / "degraded" / "draining"
+    last_seen:            str | None = None  # ISO 8601 UTC liveness beat
 
     @property
     def frame_type(self) -> FrameType:
@@ -148,9 +152,15 @@ class AnnounceFrame(NpsFrame):
         return EncodingTier.MSGPACK
 
     def unsigned_dict(self) -> dict[str, Any]:
-        """Return the dict used as the Ed25519 signing payload (no 'signature' field)."""
+        """Return the dict used as the Ed25519 signing payload (no 'signature' field).
+
+        The NDP v0.9 liveness fields ('health' / 'last_seen') are wire-only and excluded
+        here: 'last_seen' updates every heartbeat and MUST NOT require re-signing.
+        """
         d = self.to_dict()
         d.pop("signature", None)
+        d.pop("health", None)
+        d.pop("last_seen", None)
         return d
 
     def to_dict(self) -> dict[str, Any]:
@@ -176,6 +186,10 @@ class AnnounceFrame(NpsFrame):
             d["activation_mode"] = self.activation_mode
         if self.activation_endpoint is not None:
             d["activation_endpoint"] = self.activation_endpoint
+        if self.health is not None:
+            d["health"] = self.health
+        if self.last_seen is not None:
+            d["last_seen"] = self.last_seen
         return d
 
     @classmethod
@@ -197,6 +211,8 @@ class AnnounceFrame(NpsFrame):
             bridge_protocols=tuple(bridge_protocols_raw) if bridge_protocols_raw is not None else None,
             activation_mode=data.get("activation_mode"),
             activation_endpoint=data.get("activation_endpoint"),
+            health=data.get("health"),
+            last_seen=data.get("last_seen"),
         )
 
 
