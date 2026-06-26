@@ -300,6 +300,7 @@ class ActionFrame(NpsFrame):
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
             "action_id":  self.action_id,
+            "action":     self.action_id,
             "timeout_ms": self.timeout_ms,
             "async":      self.async_,
         }
@@ -309,8 +310,11 @@ class ActionFrame(NpsFrame):
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ActionFrame":
+        action_id = data.get("action_id") or data.get("action")
+        if action_id is None:
+            raise KeyError("action_id")
         return cls(
-            action_id=data["action_id"],
+            action_id=str(action_id),
             params=data.get("params"),
             idempotency_key=data.get("idempotency_key"),
             timeout_ms=int(data.get("timeout_ms", 5000)),

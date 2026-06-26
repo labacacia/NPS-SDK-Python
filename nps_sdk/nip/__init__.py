@@ -5,6 +5,18 @@
 
 from nps_sdk.nip.frames import IdentFrame, IdentMetadata, IdentReputationPolicyHint, RevokeFrame, TrustFrame
 from nps_sdk.nip.identity import NipIdentity
+from nps_sdk.nip.ca_client import (
+    NipCaClient,
+    NipCaClientError,
+    NipCaCrl,
+    NipCaCrlEntry,
+    NipCaDiscoveryDocument,
+    NipCaIdentFrame,
+    NipCaRegisterRequest,
+    NipCaRegisterX509Request,
+    NipCaRevokeFrame,
+    NipCaVerifyResponse,
+)
 from nps_sdk.nip import error_codes
 from nps_sdk.nip.error_codes import NIP_ERROR_TO_NPS_STATUS
 from nps_sdk.nip.reputation import (
@@ -27,6 +39,16 @@ __all__ = [
     "RevokeFrame",
     "TrustFrame",
     "NipIdentity",
+    "NipCaClient",
+    "NipCaClientError",
+    "NipCaCrl",
+    "NipCaCrlEntry",
+    "NipCaDiscoveryDocument",
+    "NipCaIdentFrame",
+    "NipCaRegisterRequest",
+    "NipCaRegisterX509Request",
+    "NipCaRevokeFrame",
+    "NipCaVerifyResponse",
     "error_codes",
     "NIP_ERROR_TO_NPS_STATUS",
     "IncidentType",

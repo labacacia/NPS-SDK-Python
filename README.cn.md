@@ -1,6 +1,14 @@
 [English Version](./README.md) | 中文版
 
 # NPS Python SDK (`nps-lib`)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.13-orange.svg)](CHANGELOG.cn.md)
+[![Next](https://img.shields.io/badge/next-v1.0.0--alpha.14--candidate-yellow.svg)](CHANGELOG.cn.md#100-alpha14--unreleased)
+[![NCP](https://img.shields.io/badge/NCP-v0.8-5b8cff.svg)]()
+[![NWP](https://img.shields.io/badge/NWP-v0.14-4af0b0.svg)]()
+[![NIP](https://img.shields.io/badge/NIP-v0.10-7b61ff.svg)]()
+[![NDP](https://img.shields.io/badge/NDP-v0.9-f0a050.svg)]()
+[![NOP](https://img.shields.io/badge/NOP-v0.7-ff8c42.svg)]()
 
 面向 **Neural Protocol Suite (NPS)** 的 Python 客户端库 —— 为 AI Agent 与模型设计的完整互联网协议栈。
 
@@ -13,6 +21,8 @@ PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端，**加完整 NPS-RFC-0002 X.509 + ACME `agent-01` NID 证书原语**（`nps_sdk.nip.x509` + `nps_sdk.nip.acme`）。
 
 测试数：221 个（覆盖 SDK + RFC-0002/0003/0004），全绿。
+
+Alpha.14 候选新增：远程 NIP CA 类型化客户端（`nps_sdk.nip.NipCaClient`）、native-mode NWP 服务端 helper（`nps_sdk.nwp.NwpNativeNodeServer`）和 TC-N1/TC-N2 一致性 manifest helper（`nps_sdk.conformance`）。
 
 ## 环境要求
 
@@ -37,12 +47,13 @@ pip install "nps-lib[dev]"
 |------|------|
 | `nps_sdk.core` | 帧头、编解码器（Tier-1 JSON / Tier-2 MsgPack）、anchor 缓存、异常类型 |
 | `nps_sdk.ncp`  | NCP 帧：AnchorFrame、DiffFrame、StreamFrame、CapsFrame、HelloFrame、ErrorFrame |
-| `nps_sdk.nwp`  | NWP 帧：QueryFrame、ActionFrame；异步 `NwpClient` |
-| `nps_sdk.nip`        | NIP 帧：IdentFrame（v2 双信任）、TrustFrame、RevokeFrame；`NipIdentity`（Ed25519）；`NipIdentVerifier` + `NipVerifierOptions`（RFC-0002 §8.1 双信任）；`AssuranceLevel`（RFC-0003） |
+| `nps_sdk.nwp`  | NWP 帧：QueryFrame、ActionFrame；异步 `NwpClient`；`NwpNativeNodeServer` native 服务端 |
+| `nps_sdk.nip`        | NIP 帧：IdentFrame（v2 双信任）、TrustFrame、RevokeFrame；`NipIdentity`（Ed25519）；`NipIdentVerifier` + `NipVerifierOptions`（RFC-0002 §8.1 双信任）；`AssuranceLevel`（RFC-0003）；远程 CA `NipCaClient` |
 | `nps_sdk.nip.x509`   | RFC-0002 X.509 NID 证书：`NipX509Builder` / `NipX509Verifier` / `NpsX509Oids` |
 | `nps_sdk.nip.acme`   | RFC-0002 ACME `agent-01`：`AcmeClient` / `AcmeServer`（进程内） / JWS helpers / messages |
 | `nps_sdk.ndp`  | NDP 帧：AnnounceFrame、ResolveFrame、GraphFrame；内存注册表 + 校验器 |
 | `nps_sdk.nop`  | NOP 帧：TaskFrame、DelegateFrame、SyncFrame、AlignStreamFrame；异步 `NopClient` |
+| `nps_sdk.conformance` | TC-N1/TC-N2 一致性用例目录、manifest 构造器和校验器 |
 
 ## 快速开始
 
@@ -103,6 +114,20 @@ async with NwpClient("https://node.example.com") as client:
     )
 ```
 
+### Native NWP 服务端
+
+```python
+from nps_sdk.nwp import NwpNativeNodeServer
+
+server = NwpNativeNodeServer(
+    query_handler=lambda query: [{"id": 42}],
+    action_handler=lambda action: {"action": action.action_id},
+)
+
+# `reader`/`writer` 已完成 NCP preamble、TLS 和 Hello negotiation。
+await server.serve(reader, writer)
+```
+
 ### NIP 身份管理
 
 ```python
@@ -120,6 +145,44 @@ sig = identity.sign(ident_frame.unsigned_dict())
 
 # 验签
 ok = NipIdentity.verify_signature(identity.pub_key_string, payload, sig)
+```
+
+### NIP 远程 CA Client
+
+```python
+from nps_sdk.nip import NipCaClient, NipCaRegisterRequest
+
+async with NipCaClient("https://ca.example.com", route_prefix="/nip") as ca:
+    discovery = await ca.get_discovery()
+    ident = await ca.register_agent(
+        NipCaRegisterRequest("agent-a", "ed25519:<pub>", ("nwp:query",)),
+        bearer_token="token",
+    )
+    status = await ca.verify_agent(ident.nid)
+```
+
+### 一致性 Manifest
+
+```python
+from nps_sdk.conformance import (
+    NODE_L1,
+    NpsConformanceCaseResult,
+    NpsConformanceManifest,
+    catalog_for_profile,
+    validate_manifest,
+)
+
+results = [NpsConformanceCaseResult(case.id, "pass") for case in catalog_for_profile(NODE_L1)]
+manifest = NpsConformanceManifest.create(
+    profile=NODE_L1,
+    iut_name="my-node",
+    iut_version="1.0.0-alpha.14",
+    iut_nid="urn:nps:node:example.com:my-node",
+    peer_name="labacacia-fixture",
+    peer_version="1.0.0-alpha.14",
+    results=results,
+)
+result = validate_manifest(manifest)
 ```
 
 ## 架构
@@ -163,6 +226,6 @@ pytest -k test_nip     # 仅 NIP 测试
 
 ## 许可证
 
-Apache 2.0 —— 详见 [LICENSE](https://github.com/labacacia/NPS-Dev/blob/main/LICENSE)。
+Apache 2.0 —— 详见 [LICENSE](LICENSE)。
 
 Copyright 2026 INNO LOTUS PTY LTD

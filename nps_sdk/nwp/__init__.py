@@ -68,6 +68,11 @@ from nps_sdk.nwp.memory_node_server import (
     NodeResponse,
     MemoryNodeServer,
 )
+from nps_sdk.nwp.native_server import (
+    NativeActionHandler,
+    NativeQueryHandler,
+    NwpNativeNodeServer,
+)
 from nps_sdk.nwp.anchor_server import (
     AnchorNodeApp,
     AnchorNodeOptions,
@@ -141,6 +146,9 @@ __all__ = [
     "NodeRequest",
     "NodeResponse",
     "MemoryNodeServer",
+    "NativeActionHandler",
+    "NativeQueryHandler",
+    "NwpNativeNodeServer",
     # Anchor Node server (alpha.13 client+server parity)
     "AnchorNodeApp",
     "AnchorNodeOptions",
