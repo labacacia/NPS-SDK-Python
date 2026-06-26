@@ -1,9 +1,8 @@
 English | [中文版](./README.cn.md)
 
 # NPS Python SDK (`nps-lib`)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.13-orange.svg)](CHANGELOG.md)
-[![Next](https://img.shields.io/badge/next-v1.0.0--alpha.14--candidate-yellow.svg)](CHANGELOG.md#100-alpha14--unreleased)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](../../LICENSE)
+[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.14-orange.svg)](../../CHANGELOG.md)
 [![NCP](https://img.shields.io/badge/NCP-v0.8-5b8cff.svg)]()
 [![NWP](https://img.shields.io/badge/NWP-v0.14-4af0b0.svg)]()
 [![NIP](https://img.shields.io/badge/NIP-v0.10-7b61ff.svg)]()
@@ -16,7 +15,7 @@ PyPI package: `nps-lib` | Python namespace: `nps_sdk`
 
 ## Status
 
-**v1.0.0-alpha.13 — RFC-0002 cross-SDK port (second language)**
+**v1.0.0-alpha.14 — RFC-0002 cross-SDK port (second language)**
 
 Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, Ed25519 identity management, **plus full NPS-RFC-0002 X.509 + ACME `agent-01` NID certificate primitives** (`nps_sdk.nip.x509` + `nps_sdk.nip.acme`).
 
@@ -225,6 +224,6 @@ Coverage target: ≥ 90 %.
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE).
+Apache 2.0 — see [LICENSE](https://github.com/labacacia/NPS-Dev/blob/main/LICENSE).
 
 Copyright 2026 INNO LOTUS PTY LTD

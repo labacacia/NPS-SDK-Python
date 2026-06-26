@@ -1,9 +1,8 @@
 [English Version](./README.md) | 中文版
 
 # NPS Python SDK (`nps-lib`)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.13-orange.svg)](CHANGELOG.cn.md)
-[![Next](https://img.shields.io/badge/next-v1.0.0--alpha.14--candidate-yellow.svg)](CHANGELOG.cn.md#100-alpha14--unreleased)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](../../LICENSE)
+[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.14-orange.svg)](../../CHANGELOG.cn.md)
 [![NCP](https://img.shields.io/badge/NCP-v0.8-5b8cff.svg)]()
 [![NWP](https://img.shields.io/badge/NWP-v0.14-4af0b0.svg)]()
 [![NIP](https://img.shields.io/badge/NIP-v0.10-7b61ff.svg)]()
@@ -16,7 +15,7 @@ PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 
 ## 状态
 
-**v1.0.0-alpha.13 —— RFC-0002 跨 SDK 端口波（第二棒语言）**
+**v1.0.0-alpha.14 —— RFC-0002 跨 SDK 端口波（第二棒语言）**
 
 包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端，**加完整 NPS-RFC-0002 X.509 + ACME `agent-01` NID 证书原语**（`nps_sdk.nip.x509` + `nps_sdk.nip.acme`）。
 
@@ -226,6 +225,6 @@ pytest -k test_nip     # 仅 NIP 测试
 
 ## 许可证
 
-Apache 2.0 —— 详见 [LICENSE](LICENSE)。
+Apache 2.0 —— 详见 [LICENSE](https://github.com/labacacia/NPS-Dev/blob/main/LICENSE)。
 
 Copyright 2026 INNO LOTUS PTY LTD

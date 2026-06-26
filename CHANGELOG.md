@@ -8,7 +8,7 @@ Until NPS reaches v1.0 stable, every repository in the suite is synchronized to 
 
 ---
 
-## [1.0.0-alpha.14] — Unreleased
+## [1.0.0-alpha.14] — 2026-06-26
 
 ### Added
 - `nps_sdk.nip.NipCaClient`: typed remote NIP CA client for discovery, CRL, agent/node registration, X.509 registration, renewal, revocation, and verification.
