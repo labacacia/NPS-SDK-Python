@@ -16,6 +16,11 @@ from typing import Any
 
 from nps_sdk.core.codec import NpsFrame
 from nps_sdk.core.frames import EncodingTier, FrameType
+from nps_sdk.ndp.error_codes import NDP_GRAPH_INVALID, NDP_GRAPH_TOO_LARGE
+
+
+_MAX_GRAPH_NODES = 256
+_MAX_GRAPH_EDGES = 1024
 
 
 # ── NdpAddress ───────────────────────────────────────────────────────────────
@@ -40,7 +45,7 @@ class NdpAddress:
 
 @dataclasses.dataclass(frozen=True)
 class NdpResolveResult:
-    """Resolved physical endpoint returned inside a ResolveFrame response (NPS-4 §5.2)."""
+    """Resolved physical endpoint returned inside a ResolveFrame response (NPS-4 §3.2)."""
 
     host:             str
     port:             int
@@ -67,7 +72,7 @@ class NdpResolveResult:
 
 @dataclasses.dataclass(frozen=True)
 class NdpGraphNode:
-    """A node entry in a topology GraphFrame (NPS-4 §5)."""
+    """A node entry in a topology GraphFrame (NPS-4 §3.3)."""
     nid:             str
     cluster_anchor:  str | None = None
     node_roles:      tuple[str, ...] = ()
@@ -93,7 +98,7 @@ class NdpGraphNode:
 
 @dataclasses.dataclass(frozen=True)
 class NdpGraphEdge:
-    """A directed edge in a topology GraphFrame (NPS-4 §5)."""
+    """A directed edge in a topology GraphFrame (NPS-4 §3.3)."""
     from_nid:    str
     to_nid:      str
     latency_ms:  int | None = None
@@ -118,7 +123,7 @@ class NdpGraphEdge:
 @dataclasses.dataclass(frozen=True)
 class AnnounceFrame(NpsFrame):
     """
-    Node/Agent presence broadcast frame (NPS-4 §5.1).
+    Node/Agent presence broadcast frame (NPS-4 §3.1).
 
     Broadcast by a node at startup and periodically to keep its registry
     entry alive. TTL=0 signals immediate eviction from all registries.
@@ -137,7 +142,8 @@ class AnnounceFrame(NpsFrame):
     spawn_spec_ref:       str | None = None
     bridge_protocols:     tuple[str, ...] | None = None
     activation_mode:      str | None = None
-    activation_endpoint:  str | None = None
+    activation_endpoint:  NdpAddress | None = None
+    heartbeat_interval_ms: int = 60_000
     # NDP v0.9 liveness fields — wire-only, EXCLUDED from the signed canonical form
     # (last_seen updates every heartbeat, so it must not require a re-sign; §3.2.1).
     health:               str | None = None  # "healthy" / "degraded" / "draining"
@@ -171,6 +177,7 @@ class AnnounceFrame(NpsFrame):
             "ttl":          self.ttl,
             "timestamp":    self.timestamp,
             "signature":    self.signature,
+            "heartbeat_interval_ms": self.heartbeat_interval_ms,
         }
         if self.node_type is not None:
             d["node_type"] = self.node_type
@@ -185,7 +192,7 @@ class AnnounceFrame(NpsFrame):
         if self.activation_mode is not None:
             d["activation_mode"] = self.activation_mode
         if self.activation_endpoint is not None:
-            d["activation_endpoint"] = self.activation_endpoint
+            d["activation_endpoint"] = self.activation_endpoint.to_dict()
         if self.health is not None:
             d["health"] = self.health
         if self.last_seen is not None:
@@ -210,7 +217,9 @@ class AnnounceFrame(NpsFrame):
             spawn_spec_ref=data.get("spawn_spec_ref"),
             bridge_protocols=tuple(bridge_protocols_raw) if bridge_protocols_raw is not None else None,
             activation_mode=data.get("activation_mode"),
-            activation_endpoint=data.get("activation_endpoint"),
+            activation_endpoint=NdpAddress.from_dict(data["activation_endpoint"])
+                if isinstance(data.get("activation_endpoint"), dict) else None,
+            heartbeat_interval_ms=int(data.get("heartbeat_interval_ms", 60_000)),
             health=data.get("health"),
             last_seen=data.get("last_seen"),
         )
@@ -221,7 +230,7 @@ class AnnounceFrame(NpsFrame):
 @dataclasses.dataclass(frozen=True)
 class ResolveFrame(NpsFrame):
     """
-    nwp:// address resolution frame (NPS-4 §5.2).
+    nwp:// address resolution frame (NPS-4 §3.2).
 
     Used as both request (resolved=None) and response (resolved populated).
     """
@@ -260,12 +269,30 @@ class ResolveFrame(NpsFrame):
 
 @dataclasses.dataclass(frozen=True)
 class GraphFrame(NpsFrame):
-    """Topology graph snapshot frame (NPS-4 §5). Max 256 nodes, 1024 edges."""
+    """Topology graph snapshot frame (NPS-4 §3.3). Max 256 nodes, 1024 edges."""
     graph_id:  str
     nodes:     tuple[NdpGraphNode, ...]
     edges:     tuple[NdpGraphEdge, ...]
     ttl:       int
     metadata:  dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        if len(self.nodes) > _MAX_GRAPH_NODES:
+            raise ValueError(f"{NDP_GRAPH_TOO_LARGE}: nodes length exceeds {_MAX_GRAPH_NODES}")
+        if len(self.edges) > _MAX_GRAPH_EDGES:
+            raise ValueError(f"{NDP_GRAPH_TOO_LARGE}: edges length exceeds {_MAX_GRAPH_EDGES}")
+
+        node_ids = {node.nid for node in self.nodes}
+        if any(not node.nid for node in self.nodes):
+            raise ValueError(f"{NDP_GRAPH_INVALID}: graph nodes require nid")
+
+        for edge in self.edges:
+            if not edge.from_nid or not edge.to_nid:
+                raise ValueError(f"{NDP_GRAPH_INVALID}: graph edges require from_nid and to_nid")
+            if edge.from_nid == edge.to_nid:
+                raise ValueError(f"{NDP_GRAPH_INVALID}: graph self-edges are forbidden")
+            if edge.from_nid not in node_ids or edge.to_nid not in node_ids:
+                raise ValueError(f"{NDP_GRAPH_INVALID}: graph edge endpoints must appear in nodes")
 
     @property
     def frame_type(self) -> FrameType:

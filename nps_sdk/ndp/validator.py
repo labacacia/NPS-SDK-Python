@@ -10,6 +10,10 @@ from __future__ import annotations
 import dataclasses
 import threading
 
+from nps_sdk.ndp.error_codes import (
+    NDP_ANNOUNCE_NID_MISMATCH,
+    NDP_ANNOUNCE_SIGNATURE_INVALID,
+)
 from nps_sdk.ndp.frames import AnnounceFrame
 from nps_sdk.nip.identity import NipIdentity
 
@@ -87,14 +91,14 @@ class NdpAnnounceValidator:
 
         if pub_key is None:
             return NdpAnnounceResult.fail(
-                "NDP-ANNOUNCE-NID-MISMATCH",
+                NDP_ANNOUNCE_NID_MISMATCH,
                 f"No public key registered for NID '{frame.nid}'.",
             )
 
         payload = frame.unsigned_dict()
         if not NipIdentity.verify_signature(pub_key, payload, frame.signature):
             return NdpAnnounceResult.fail(
-                "NDP-ANNOUNCE-SIG-INVALID",
+                NDP_ANNOUNCE_SIGNATURE_INVALID,
                 f"Ed25519 signature verification failed for NID '{frame.nid}'.",
             )
 

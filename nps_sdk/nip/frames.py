@@ -5,8 +5,9 @@
 NPS NIP — Neural Identity Protocol frame dataclasses.
 
   IdentFrame   0x20 — Agent identity declaration and certificate carrier.
-  TrustFrame   0x21 — Cross-CA trust chain and capability grant (frame-only;
-                      OSS library does not enforce trust chain validation).
+  TrustFrame   0x21 — Cross-CA trust chain and capability grant. The OSS
+                      library carries the wire frame; deployments may layer
+                      local pinned-grantor validation or NPS Cloud federation.
   RevokeFrame  0x22 — Certificate revocation.
 """
 
@@ -17,7 +18,23 @@ from typing import Any
 
 from nps_sdk.core.codec import NpsFrame
 from nps_sdk.core.frames import EncodingTier, FrameType
+from nps_sdk.nip.error_codes import REVOKE_FRAME_INVALID
 from nps_sdk.nip.assurance_level import AssuranceLevel
+
+
+_REASON_PARENT_REVOKED = "parent_revoked"
+
+
+def _validate_revoke_parent_rule(reason: str, parent_nid: str | None) -> None:
+    if reason == _REASON_PARENT_REVOKED:
+        if not parent_nid:
+            raise ValueError(
+                f"{REVOKE_FRAME_INVALID}: parent_nid is required when reason=parent_revoked"
+            )
+    elif parent_nid is not None:
+        raise ValueError(
+            f"{REVOKE_FRAME_INVALID}: parent_nid must be omitted unless reason=parent_revoked"
+        )
 
 
 # ── IdentReputationPolicyHint ─────────────────────────────────────────────────
@@ -188,16 +205,19 @@ class TrustFrame(NpsFrame):
     """
     Cross-CA trust chain and capability grant frame (NPS-3 §5.2).
 
-    ⚠️ Business logic for trust chain validation is a commercial NPS Cloud
-    feature. This class provides the frame definition for codec use; trust
-    chain enforcement is not implemented in the OSS library.
+    The open SDK carries the complete wire frame. Deployments may layer
+    local pinned-grantor validation or NPS Cloud managed federation policy
+    on top.
     """
 
     grantor_nid: str
     grantee_ca:  str
     trust_scope: tuple[str, ...]
     nodes:       tuple[str, ...]
+    issued_at:   str
     expires_at:  str
+    serial:      str
+    signer_nid:  str
     signature:   str
 
     @property
@@ -215,18 +235,25 @@ class TrustFrame(NpsFrame):
             "grantee_ca":  self.grantee_ca,
             "trust_scope": list(self.trust_scope),
             "nodes":       list(self.nodes),
+            "issued_at":   self.issued_at,
             "expires_at":  self.expires_at,
+            "serial":      self.serial,
+            "signer_nid":  self.signer_nid,
             "signature":   self.signature,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TrustFrame":
+        grantor_nid = data.get("grantor_nid", data.get("issuer_nid", ""))
         return cls(
-            grantor_nid=data["grantor_nid"],
-            grantee_ca=data["grantee_ca"],
-            trust_scope=tuple(data.get("trust_scope", [])),
+            grantor_nid=grantor_nid,
+            grantee_ca=data.get("grantee_ca", data.get("subject_nid")),
+            trust_scope=tuple(data.get("trust_scope", data.get("scopes", []))),
             nodes=tuple(data.get("nodes", [])),
+            issued_at=data.get("issued_at", ""),
             expires_at=data["expires_at"],
+            serial=data.get("serial", ""),
+            signer_nid=data.get("signer_nid", grantor_nid or ""),
             signature=data["signature"],
         )
 
@@ -247,10 +274,15 @@ class RevokeFrame(NpsFrame):
     """
 
     target_nid: str
-    serial:     str
     reason:     str   # key_compromise | ca_compromise | affiliation_changed | superseded | cessation_of_operation
     revoked_at: str
+    signer_nid: str
     signature:  str
+    serial:     str | None = None
+    parent_nid: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_revoke_parent_rule(self.reason, self.parent_nid)
 
     @property
     def frame_type(self) -> FrameType:
@@ -261,23 +293,30 @@ class RevokeFrame(NpsFrame):
         return EncodingTier.MSGPACK
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d = {
             "frame":      "0x22",
             "target_nid": self.target_nid,
-            "serial":     self.serial,
             "reason":     self.reason,
             "revoked_at": self.revoked_at,
+            "signer_nid": self.signer_nid,
             "signature":  self.signature,
         }
+        if self.serial is not None:
+            d["serial"] = self.serial
+        if self.parent_nid is not None:
+            d["parent_nid"] = self.parent_nid
+        return d
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "RevokeFrame":
         return cls(
-            target_nid=data["target_nid"],
-            serial=data["serial"],
+            target_nid=data.get("target_nid", data.get("nid")),
             reason=data["reason"],
             revoked_at=data["revoked_at"],
+            signer_nid=data["signer_nid"],
             signature=data["signature"],
+            serial=data.get("serial"),
+            parent_nid=data.get("parent_nid"),
         )
 
     def unsigned_dict(self) -> dict[str, Any]:

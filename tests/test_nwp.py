@@ -3,10 +3,14 @@
 
 """Tests for NWP frame dataclasses."""
 
+import json
+from pathlib import Path
+
 import pytest
 
 from nps_sdk.core.codec import NpsFrameCodec
-from nps_sdk.core.frames import EncodingTier, FrameType
+from nps_sdk.core.exceptions import NpsCodecError
+from nps_sdk.core.frames import EncodingTier, FrameFlags, FrameHeader, FrameType
 from nps_sdk.core.registry import FrameRegistry
 from nps_sdk.nwp.frames import (
     ActionFrame,
@@ -73,6 +77,51 @@ class TestQueryFrame:
         assert out.vector_search.top_k  == 5
         assert out.vector_search.metric == "cosine"
         assert len(out.vector_search.vector) == 3
+
+    def test_vector_search_roundtrip_binary_vector(self, codec: NpsFrameCodec):
+        vs    = VectorSearchOptions(field="emb", vector=(0.1, 0.2, 0.3), top_k=5, metric="cosine")
+        frame = QueryFrame(vector_search=vs)
+        wire  = codec.encode(frame, override_tier=EncodingTier.BINARY_VECTOR)
+
+        header = NpsFrameCodec.peek_header(wire)
+        assert header.encoding_tier == EncodingTier.BINARY_VECTOR
+        assert wire[header.header_size:header.header_size + 4] == b"NPBV"
+
+        out = codec.decode(wire)
+        assert isinstance(out, QueryFrame)
+        assert out.vector_search is not None
+        assert out.vector_search.field == "emb"
+        assert out.vector_search.vector == pytest.approx((0.1, 0.2, 0.3))
+        assert out.vector_search.top_k == 5
+
+    def test_binary_vector_conformance_fixture(self, codec: NpsFrameCodec):
+        fixture_path = (
+            Path(__file__).resolve().parents[3]
+            / "spec"
+            / "conformance"
+            / "ncp"
+            / "binary_vector_payload_vectors.json"
+        )
+        fixture = json.loads(fixture_path.read_text())
+        positive = fixture["vectors"][0]
+        payload = bytes.fromhex(positive["input"]["payload_hex"])
+        flags = FrameFlags.TIER3_BINARY_VECTOR | FrameFlags.FINAL
+        wire = FrameHeader(FrameType.QUERY, flags, len(payload)).to_bytes() + payload
+
+        out = codec.decode(wire)
+        assert isinstance(out, QueryFrame)
+        assert out.anchor_ref == positive["expected"]["decoded_frame"]["anchor_ref"]
+        assert out.limit == positive["expected"]["decoded_frame"]["limit"]
+        assert out.vector_search is not None
+        assert out.vector_search.field == "embedding"
+        assert out.vector_search.vector == pytest.approx((0.25, -1.5, 3.0))
+        assert out.vector_search.top_k == 2
+
+        for negative in fixture["vectors"][1:]:
+            payload = bytes.fromhex(negative["input"]["payload_hex"])
+            wire = FrameHeader(FrameType.QUERY, flags, len(payload)).to_bytes() + payload
+            with pytest.raises(NpsCodecError):
+                codec.decode(wire)
 
     def test_alpha11_query_extensions(self):
         frame = QueryFrame.from_dict({

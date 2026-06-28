@@ -18,6 +18,13 @@ from nps_sdk.ndp.frames import (
     NdpResolveResult,
     ResolveFrame,
 )
+from nps_sdk.ndp.federation import (
+    MAX_FEDERATION_HOPS,
+    NDP_FORWARDED_BY_HEADER,
+    NdpFederationLoopError,
+    append_forwarded_by,
+    parse_forwarded_by,
+)
 from nps_sdk.ndp.security import SecurityProfile
 from nps_sdk.ndp.registry import InMemoryNdpRegistry
 from nps_sdk.ndp.validator import NdpAnnounceResult, NdpAnnounceValidator
@@ -34,6 +41,11 @@ __all__ = [
     "NdpGraphNode",
     "NdpResolveResult",
     "ResolveFrame",
+    "MAX_FEDERATION_HOPS",
+    "NDP_FORWARDED_BY_HEADER",
+    "NdpFederationLoopError",
+    "append_forwarded_by",
+    "parse_forwarded_by",
     "InMemoryNdpRegistry",
     "NdpAnnounceResult",
     "NdpAnnounceValidator",

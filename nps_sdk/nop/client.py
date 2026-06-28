@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-NopClient — async HTTP client for submitting NOP tasks to a Gateway Node.
+NopClient — async HTTP client for submitting NOP tasks to an Anchor Node.
 
 An Agent uses NopClient to:
-  1. Submit a TaskFrame to a Gateway Node's /task endpoint.
+  1. Submit a TaskFrame to an Anchor Node's /task endpoint.
   2. Poll for task status.
   3. Cancel a running task.
   4. Await completion (polling loop with configurable interval and timeout).
@@ -77,7 +77,7 @@ class NopTaskStatus:
 
 class NopClient:
     """
-    Async HTTP client for NOP Gateway Nodes (NPS-5).
+    Async HTTP client for NOP Anchor Nodes (NPS-5).
 
     Usage::
 

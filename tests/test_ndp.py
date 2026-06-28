@@ -20,10 +20,12 @@ from nps_sdk.ndp.frames import (
     AnnounceFrame,
     GraphFrame,
     NdpAddress,
+    NdpGraphEdge,
     NdpGraphNode,
     NdpResolveResult,
     ResolveFrame,
 )
+from nps_sdk.ndp.federation import NdpFederationLoopError, append_forwarded_by, parse_forwarded_by
 from nps_sdk.ndp.registry import InMemoryNdpRegistry
 from nps_sdk.ndp.validator import NdpAnnounceResult, NdpAnnounceValidator
 from nps_sdk.nip.identity import NipIdentity
@@ -62,6 +64,7 @@ def _make_announce(
         "capabilities": list(capabilities),
         "ttl":          ttl,
         "timestamp":    timestamp,
+        "heartbeat_interval_ms": 60_000,
         "node_type":    node_type,
     }
     sig = identity.sign(unsigned)
@@ -104,6 +107,16 @@ class TestAnnounceFrame:
         assert "signature" not in d
         assert "nid" in d
         assert "addresses" in d
+        assert "node_type" in d
+        assert d["heartbeat_interval_ms"] == 60_000
+
+        agent_frame = AnnounceFrame(
+            nid=frame.nid, addresses=frame.addresses, capabilities=frame.capabilities,
+            ttl=frame.ttl, timestamp=frame.timestamp, signature=frame.signature,
+        )
+        agent_unsigned = agent_frame.unsigned_dict()
+        assert "node_type" not in agent_unsigned
+        assert "frame" not in agent_unsigned
 
     def test_liveness_fields_wire_only_excluded_from_signing(self, identity):
         # NDP v0.9 health/last_seen: on the wire, but NOT in the signed canonical form
@@ -155,6 +168,42 @@ class TestAnnounceFrame:
         out = codec.decode(codec.encode(frame))
         assert isinstance(out, AnnounceFrame)
         assert len(out.addresses) == 2
+
+    def test_activation_endpoint_is_address_object(self, identity):
+        base = _make_announce(identity)
+        endpoint = NdpAddress(host="10.0.0.5", port=17440, protocol="nwp")
+        frame = AnnounceFrame(
+            nid=base.nid, addresses=base.addresses, capabilities=base.capabilities,
+            ttl=base.ttl, timestamp=base.timestamp, signature=base.signature,
+            node_type=base.node_type, activation_mode="resident",
+            activation_endpoint=endpoint,
+        )
+        d = frame.to_dict()
+        assert d["activation_endpoint"] == endpoint.to_dict()
+        assert frame.unsigned_dict()["activation_endpoint"] == endpoint.to_dict()
+        out = AnnounceFrame.from_dict(d)
+        assert out.activation_endpoint == endpoint
+
+    def test_alpha_optional_fields_roundtrip(self, identity):
+        base = _make_announce(identity)
+        frame = AnnounceFrame(
+            nid=base.nid, addresses=base.addresses, capabilities=base.capabilities,
+            ttl=base.ttl, timestamp=base.timestamp, signature=base.signature,
+            node_roles=("memory", "bridge"),
+            cluster_anchor="urn:nps:node:anchor.example.com:main",
+            spawn_spec_ref={"kind": "oci", "image": "example/node:latest"},
+            bridge_protocols=("mcp", "a2a"),
+            activation_mode="on_demand",
+        )
+
+        d = frame.to_dict()
+
+        assert d["node_roles"] == ["memory", "bridge"]
+        assert d["cluster_anchor"] == "urn:nps:node:anchor.example.com:main"
+        assert d["spawn_spec_ref"] == {"kind": "oci", "image": "example/node:latest"}
+        assert d["bridge_protocols"] == ["mcp", "a2a"]
+        assert d["activation_mode"] == "on_demand"
+        assert AnnounceFrame.from_dict(d) == frame
 
 
 # ── ResolveFrame ──────────────────────────────────────────────────────────────
@@ -215,6 +264,10 @@ class TestGraphFrame:
                     cluster_anchor="urn:nps:node:anchor.example.com",
                     node_roles=("worker",),
                 ),
+                NdpGraphNode(
+                    nid="urn:nps:node:anchor.example.com",
+                    node_roles=("anchor",),
+                ),
             ),
             edges=(
                 NdpGraphEdge(
@@ -229,7 +282,7 @@ class TestGraphFrame:
         assert isinstance(out, GraphFrame)
         assert out.graph_id == "g1"
         assert out.ttl == 300
-        assert len(out.nodes) == 1
+        assert len(out.nodes) == 2
         assert out.nodes[0].nid == "urn:nps:node:api.example.com:products"
         assert len(out.edges) == 1
         assert out.edges[0].from_nid == "urn:nps:node:api.example.com:products"
@@ -240,6 +293,74 @@ class TestGraphFrame:
         assert isinstance(out, GraphFrame)
         assert out.graph_id == "g2"
         assert out.metadata == {"version": "1"}
+
+    def test_rejects_oversized_graph(self):
+        nodes = tuple(NdpGraphNode(nid=f"urn:nps:node:example.com:{i}") for i in range(257))
+
+        with pytest.raises(ValueError, match="NDP-GRAPH-TOO-LARGE"):
+            GraphFrame(graph_id="too-big", nodes=nodes, edges=(), ttl=60)
+
+    @pytest.mark.parametrize(
+        "edge",
+        [
+            NdpGraphEdge(
+                from_nid="urn:nps:node:example.com:a",
+                to_nid="urn:nps:node:example.com:a",
+            ),
+            NdpGraphEdge(
+                from_nid="urn:nps:node:example.com:a",
+                to_nid="urn:nps:node:example.com:missing",
+            ),
+        ],
+    )
+    def test_rejects_invalid_graph_edges(self, edge):
+        nodes = (NdpGraphNode(nid="urn:nps:node:example.com:a"),)
+
+        with pytest.raises(ValueError, match="NDP-GRAPH-INVALID"):
+            GraphFrame(graph_id="bad-edge", nodes=nodes, edges=(edge,), ttl=60)
+
+    def test_rejects_empty_graph_node_nid(self):
+        with pytest.raises(ValueError, match="NDP-GRAPH-INVALID"):
+            GraphFrame(graph_id="bad-node", nodes=(NdpGraphNode(nid=""),), edges=(), ttl=60)
+
+    def test_rejects_graph_edge_without_endpoint(self):
+        nodes = (NdpGraphNode(nid="urn:nps:node:example.com:a"),)
+        edge = NdpGraphEdge(from_nid="", to_nid="urn:nps:node:example.com:a")
+
+        with pytest.raises(ValueError, match="NDP-GRAPH-INVALID"):
+            GraphFrame(graph_id="bad-edge", nodes=nodes, edges=(edge,), ttl=60)
+
+
+class TestNdpFederation:
+    def test_parse_forwarded_by_empty_header(self):
+        assert parse_forwarded_by(None) == ()
+        assert parse_forwarded_by("") == ()
+
+    def test_parse_and_append_forwarded_by(self):
+        header = "urn:nps:agent:registry-a.example.com:r1, urn:nps:agent:registry-b.example.com:r2"
+
+        assert parse_forwarded_by(header) == (
+            "urn:nps:agent:registry-a.example.com:r1",
+            "urn:nps:agent:registry-b.example.com:r2",
+        )
+        assert append_forwarded_by("urn:nps:agent:registry-c.example.com:r3", header).endswith(
+            "urn:nps:agent:registry-c.example.com:r3"
+        )
+
+    def test_append_forwarded_by_rejects_loop(self):
+        header = "urn:nps:agent:registry-a.example.com:r1, urn:nps:agent:registry-b.example.com:r2"
+
+        with pytest.raises(NdpFederationLoopError, match="NDP-FEDERATION-LOOP"):
+            append_forwarded_by("urn:nps:agent:registry-b.example.com:r2", header)
+
+    def test_append_forwarded_by_drops_at_three_hops(self):
+        header = (
+            "urn:nps:agent:registry-a.example.com:r1, "
+            "urn:nps:agent:registry-b.example.com:r2, "
+            "urn:nps:agent:registry-c.example.com:r3"
+        )
+
+        assert append_forwarded_by("urn:nps:agent:registry-d.example.com:r4", header) is None
 
 
 # ── InMemoryNdpRegistry ───────────────────────────────────────────────────────
@@ -417,7 +538,7 @@ class TestNdpAnnounceValidator:
         )
         result = validator.validate(frame)
         assert result.is_valid is False
-        assert result.error_code == "NDP-ANNOUNCE-SIG-INVALID"
+        assert result.error_code == "NDP-ANNOUNCE-SIGNATURE-INVALID"
 
     def test_remove_public_key(self, identity):
         validator = NdpAnnounceValidator()
@@ -440,11 +561,11 @@ class TestNdpAnnounceValidator:
 
     def test_result_factory_methods(self):
         ok   = NdpAnnounceResult.ok()
-        fail = NdpAnnounceResult.fail("NDP-ANNOUNCE-SIG-INVALID", "bad sig")
+        fail = NdpAnnounceResult.fail("NDP-ANNOUNCE-SIGNATURE-INVALID", "bad sig")
         assert ok.is_valid is True
         assert ok.error_code is None
         assert fail.is_valid is False
-        assert fail.error_code == "NDP-ANNOUNCE-SIG-INVALID"
+        assert fail.error_code == "NDP-ANNOUNCE-SIGNATURE-INVALID"
         assert fail.message    == "bad sig"
 
 

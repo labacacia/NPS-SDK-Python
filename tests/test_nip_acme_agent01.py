@@ -44,7 +44,7 @@ def ca_setup():
     """Build CA keypair + self-signed root."""
     ca_priv = Ed25519PrivateKey.generate()
     root = NipX509Builder.issue_root(
-        "urn:nps:ca:acme-test", ca_priv,
+        "urn:nps:org:acme-test", ca_priv,
         _now() - datetime.timedelta(minutes=1),
         _now() + datetime.timedelta(days=365),
         1,
@@ -61,7 +61,7 @@ async def test_issue_agent_cert_round_trip_returns_valid_pem_chain(ca_setup):
     agent_nid = "urn:nps:agent:acme-roundtrip:1"
 
     server = AcmeServer(
-        ca_nid="urn:nps:ca:acme-test",
+        ca_nid="urn:nps:org:acme-test",
         ca_priv_key=ca_priv,
         ca_root_cert=root,
         cert_validity=datetime.timedelta(days=30),
@@ -98,7 +98,7 @@ async def test_respond_agent01_tampered_signature_server_returns_challenge_faile
     agent_nid = "urn:nps:agent:acme-tampered:1"
 
     server = AcmeServer(
-        ca_nid="urn:nps:ca:acme-test",
+        ca_nid="urn:nps:org:acme-test",
         ca_priv_key=ca_priv,
         ca_root_cert=root,
         cert_validity=datetime.timedelta(days=30),

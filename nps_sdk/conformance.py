@@ -158,7 +158,7 @@ NODE_L1_CASES: tuple[NpsConformanceCase, ...] = (
     _c("TC-N1-NDP-01", NODE_L1, "N1-NDP-01", "AnnounceFrame carries activation_mode"),
     _c("TC-N1-NDP-02", NODE_L1, "N1-NDP-02", "AnnounceFrame signature"),
     _c("TC-N1-NDP-03", NODE_L1, "N1-NDP-03", "ResolveFrame response"),
-    _c("TC-N1-NDP-04", NODE_L1, "N1-NDP-04", "GraphFrame subscription", True),
+    _c("TC-N1-NDP-04", NODE_L1, "N1-NDP-04", "GraphFrame topology snapshot", True),
     _c("TC-N1-NWP-01", NODE_L1, "N1-NWP-01", "Inbox accepts ActionFrame"),
     _c("TC-N1-NWP-02", NODE_L1, "N1-NWP-02", "Inbox persists across restart"),
     _c("TC-N1-NWP-03", NODE_L1, "N1-NWP-03", "NWP pull serves inbox"),

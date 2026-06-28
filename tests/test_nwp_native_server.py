@@ -9,7 +9,7 @@ from nps_sdk.core.codec import NpsFrameCodec
 from nps_sdk.core.frames import EncodingTier
 from nps_sdk.core.registry import FrameRegistry
 from nps_sdk.ncp.frames import CapsFrame, ErrorFrame
-from nps_sdk.nwp import ActionFrame, NwpNativeNodeServer, QueryFrame
+from nps_sdk.nwp import ActionFrame, NwpNativeNodeServer, QueryFrame, VectorSearchOptions
 
 
 class FakeWriter:
@@ -53,6 +53,35 @@ async def test_serve_once_reads_and_writes_one_frame() -> None:
     assert frame.data[0]["action"] == "ping"
 
 
+@pytest.mark.asyncio
+async def test_dispatch_wire_rejects_unnegotiated_binary_vector() -> None:
+    codec = NpsFrameCodec(FrameRegistry.create_full())
+    server = NwpNativeNodeServer(query_handler=lambda _: [{"id": 42}], codec=codec)
+    request = codec.encode(_vector_query(), override_tier=EncodingTier.BINARY_VECTOR)
+
+    frame = codec.decode(await server.dispatch_wire(request))
+
+    assert isinstance(frame, ErrorFrame)
+    assert frame.status == "NPS-SERVER-ENCODING-UNSUPPORTED"
+    assert frame.error == "NCP-ENCODING-UNSUPPORTED"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_wire_allows_negotiated_binary_vector_query() -> None:
+    codec = NpsFrameCodec(FrameRegistry.create_full())
+    server = NwpNativeNodeServer(
+        query_handler=lambda _: [{"id": 42}],
+        codec=codec,
+        enabled_encodings=("msgpack", "binary_vector.v1"),
+    )
+    request = codec.encode(_vector_query(), override_tier=EncodingTier.BINARY_VECTOR)
+
+    frame = codec.decode(await server.dispatch_wire(request))
+
+    assert isinstance(frame, CapsFrame)
+    assert frame.count == 1
+
+
 def test_action_frame_accepts_legacy_action_key() -> None:
     frame = ActionFrame.from_dict({"action": "ping"})
 
@@ -66,3 +95,13 @@ async def test_unsupported_frame_returns_error_frame() -> None:
 
     assert isinstance(frame, ErrorFrame)
     assert frame.error == "NWP-NATIVE-FRAME-UNSUPPORTED"
+
+
+def _vector_query() -> QueryFrame:
+    return QueryFrame(
+        vector_search=VectorSearchOptions(
+            field="embedding",
+            vector=(0.25, -1.5, 3.0),
+            top_k=1,
+        ),
+    )

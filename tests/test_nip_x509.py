@@ -137,26 +137,26 @@ class TestNipX509:
         now = _now()
 
         root = NipX509Builder.issue_root(
-            "urn:nps:ca:test", ca,
+            "urn:nps:org:test", ca,
             now - datetime.timedelta(minutes=1),
             now + datetime.timedelta(days=365),
             1,
         )
         leaf = NipX509Builder.issue_leaf(
-            "urn:nps:agent:happy:1", agent.public_key(), ca, "urn:nps:ca:test",
+            "urn:nps:agent:happy:1", agent.public_key(), ca, "urn:nps:org:test",
             LeafRole.AGENT, AssuranceLevel.ATTESTED,
             now - datetime.timedelta(minutes=1),
             now + datetime.timedelta(days=30),
             2,
         )
-        frame = _build_v2_frame("urn:nps:agent:happy:1", agent, ca, "urn:nps:ca:test",
+        frame = _build_v2_frame("urn:nps:agent:happy:1", agent, ca, "urn:nps:org:test",
                                 AssuranceLevel.ATTESTED, leaf, root)
 
         opts = NipVerifierOptions(
-            trusted_ca_public_keys={"urn:nps:ca:test": _pub_key_string(ca.public_key())},
+            trusted_ca_public_keys={"urn:nps:org:test": _pub_key_string(ca.public_key())},
             trusted_x509_roots=(root,),
         )
-        result = NipIdentVerifier(opts).verify(frame, "urn:nps:ca:test")
+        result = NipIdentVerifier(opts).verify(frame, "urn:nps:org:test")
 
         assert result.valid, f"step={result.step_failed} err={result.error_code} msg={result.message}"
 
@@ -167,21 +167,21 @@ class TestNipX509:
         now = _now()
 
         root = NipX509Builder.issue_root(
-            "urn:nps:ca:test", ca,
+            "urn:nps:org:test", ca,
             now - datetime.timedelta(minutes=1),
             now + datetime.timedelta(days=365),
             1,
         )
         tampered = _build_leaf_without_eku(
-            "urn:nps:agent:eku:1", agent.public_key(), ca, "urn:nps:ca:test", 99)
-        frame = _build_v2_frame("urn:nps:agent:eku:1", agent, ca, "urn:nps:ca:test",
+            "urn:nps:agent:eku:1", agent.public_key(), ca, "urn:nps:org:test", 99)
+        frame = _build_v2_frame("urn:nps:agent:eku:1", agent, ca, "urn:nps:org:test",
                                 None, tampered, root)
 
         opts = NipVerifierOptions(
-            trusted_ca_public_keys={"urn:nps:ca:test": _pub_key_string(ca.public_key())},
+            trusted_ca_public_keys={"urn:nps:org:test": _pub_key_string(ca.public_key())},
             trusted_x509_roots=(root,),
         )
-        result = NipIdentVerifier(opts).verify(frame, "urn:nps:ca:test")
+        result = NipIdentVerifier(opts).verify(frame, "urn:nps:org:test")
 
         assert not result.valid
         assert result.error_code == error_codes.CERT_EKU_MISSING
@@ -194,27 +194,27 @@ class TestNipX509:
         now = _now()
 
         root = NipX509Builder.issue_root(
-            "urn:nps:ca:test", ca,
+            "urn:nps:org:test", ca,
             now - datetime.timedelta(minutes=1),
             now + datetime.timedelta(days=365),
             1,
         )
         # Issue leaf for the FORGED nid; splice into frame asserting the VICTIM nid.
         forged_leaf = NipX509Builder.issue_leaf(
-            "urn:nps:agent:attacker:9", agent.public_key(), ca, "urn:nps:ca:test",
+            "urn:nps:agent:attacker:9", agent.public_key(), ca, "urn:nps:org:test",
             LeafRole.AGENT, AssuranceLevel.ANONYMOUS,
             now - datetime.timedelta(minutes=1),
             now + datetime.timedelta(days=30),
             77,
         )
-        frame = _build_v2_frame("urn:nps:agent:victim:1", agent, ca, "urn:nps:ca:test",
+        frame = _build_v2_frame("urn:nps:agent:victim:1", agent, ca, "urn:nps:org:test",
                                 None, forged_leaf, root)
 
         opts = NipVerifierOptions(
-            trusted_ca_public_keys={"urn:nps:ca:test": _pub_key_string(ca.public_key())},
+            trusted_ca_public_keys={"urn:nps:org:test": _pub_key_string(ca.public_key())},
             trusted_x509_roots=(root,),
         )
-        result = NipIdentVerifier(opts).verify(frame, "urn:nps:ca:test")
+        result = NipIdentVerifier(opts).verify(frame, "urn:nps:org:test")
 
         assert not result.valid
         assert result.error_code == error_codes.CERT_SUBJECT_NID_MISMATCH
@@ -227,26 +227,26 @@ class TestNipX509:
         now = _now()
 
         root = NipX509Builder.issue_root(
-            "urn:nps:ca:test", ca,
+            "urn:nps:org:test", ca,
             now - datetime.timedelta(minutes=1),
             now + datetime.timedelta(days=365),
             1,
         )
         leaf = NipX509Builder.issue_leaf(
-            "urn:nps:agent:v1compat:1", agent.public_key(), ca, "urn:nps:ca:test",
+            "urn:nps:agent:v1compat:1", agent.public_key(), ca, "urn:nps:org:test",
             LeafRole.AGENT, AssuranceLevel.ANONYMOUS,
             now - datetime.timedelta(minutes=1),
             now + datetime.timedelta(days=30),
             2,
         )
-        frame = _build_v2_frame("urn:nps:agent:v1compat:1", agent, ca, "urn:nps:ca:test",
+        frame = _build_v2_frame("urn:nps:agent:v1compat:1", agent, ca, "urn:nps:org:test",
                                 None, leaf, root)
 
         # Verifier WITHOUT trusted_x509_roots — Step 3b is skipped.
         opts = NipVerifierOptions(
-            trusted_ca_public_keys={"urn:nps:ca:test": _pub_key_string(ca.public_key())},
+            trusted_ca_public_keys={"urn:nps:org:test": _pub_key_string(ca.public_key())},
         )
-        result = NipIdentVerifier(opts).verify(frame, "urn:nps:ca:test")
+        result = NipIdentVerifier(opts).verify(frame, "urn:nps:org:test")
         assert result.valid, f"v1-only verifier MUST accept v2 frames; got {result.error_code}"
 
     def test_v2_verifier_rejects_v2_frame_when_trusted_roots_missing(self):
@@ -256,35 +256,35 @@ class TestNipX509:
         now = _now()
 
         root = NipX509Builder.issue_root(
-            "urn:nps:ca:test", ca,
+            "urn:nps:org:test", ca,
             now - datetime.timedelta(minutes=1),
             now + datetime.timedelta(days=365),
             1,
         )
         leaf = NipX509Builder.issue_leaf(
-            "urn:nps:agent:wrongtrust:1", agent.public_key(), ca, "urn:nps:ca:test",
+            "urn:nps:agent:wrongtrust:1", agent.public_key(), ca, "urn:nps:org:test",
             LeafRole.AGENT, AssuranceLevel.ANONYMOUS,
             now - datetime.timedelta(minutes=1),
             now + datetime.timedelta(days=30),
             2,
         )
-        frame = _build_v2_frame("urn:nps:agent:wrongtrust:1", agent, ca, "urn:nps:ca:test",
+        frame = _build_v2_frame("urn:nps:agent:wrongtrust:1", agent, ca, "urn:nps:org:test",
                                 None, leaf, root)
 
         # Different unrelated CA root.
         other_ca = Ed25519PrivateKey.generate()
         other_root = NipX509Builder.issue_root(
-            "urn:nps:ca:other", other_ca,
+            "urn:nps:org:other", other_ca,
             now - datetime.timedelta(minutes=1),
             now + datetime.timedelta(days=365),
             1,
         )
 
         opts = NipVerifierOptions(
-            trusted_ca_public_keys={"urn:nps:ca:test": _pub_key_string(ca.public_key())},
+            trusted_ca_public_keys={"urn:nps:org:test": _pub_key_string(ca.public_key())},
             trusted_x509_roots=(other_root,),
         )
-        result = NipIdentVerifier(opts).verify(frame, "urn:nps:ca:test")
+        result = NipIdentVerifier(opts).verify(frame, "urn:nps:org:test")
 
         assert not result.valid
         assert result.error_code == error_codes.CERT_FORMAT_INVALID

@@ -3,7 +3,9 @@
 
 """Tests for NIP frame dataclasses and NipIdentity."""
 
+import json
 import os
+from pathlib import Path
 import tempfile
 import pytest
 
@@ -12,6 +14,18 @@ from nps_sdk.nip.identity import NipIdentity
 from nps_sdk.core.codec import NpsFrameCodec
 from nps_sdk.core.frames import EncodingTier, FrameType
 from nps_sdk.core.registry import FrameRegistry
+
+
+_NIP_VECTOR_DIR = Path(__file__).resolve().parents[3] / "spec" / "conformance" / "nip"
+
+
+def _load_vector_file(name: str) -> dict:
+    with (_NIP_VECTOR_DIR / name).open("r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _canonical_json(payload: dict) -> str:
+    return json.dumps(payload, separators=(",", ":"), sort_keys=True)
 
 
 @pytest.fixture
@@ -173,10 +187,11 @@ class TestRevokeFrame:
     def _make_frame(self) -> RevokeFrame:
         return RevokeFrame(
             target_nid="urn:nps:agent:ca.example.com:abc123",
-            serial="0x0001",
             reason="key_compromise",
             revoked_at="2026-04-16T12:00:00Z",
+            signer_nid="urn:nps:org:ca.example.com",
             signature="ed25519:CCCC",
+            serial="0x0001",
         )
 
     def test_frame_type(self):
@@ -193,8 +208,28 @@ class TestRevokeFrame:
         out   = codec.decode(codec.encode(frame))
         assert isinstance(out, RevokeFrame)
         assert out.target_nid == frame.target_nid
+        assert out.serial     == frame.serial
         assert out.reason     == "key_compromise"
         assert out.revoked_at == frame.revoked_at
+        assert out.signer_nid == frame.signer_nid
+
+    @pytest.mark.parametrize("vector_id", ["nip.revoke.001", "nip.revoke.002", "nip.revoke.003"])
+    def test_revoke_conformance_canonical_vectors(self, vector_id):
+        vectors = _load_vector_file("revoke_frame_vectors.json")["vectors"]
+        vector = next(v for v in vectors if v["id"] == vector_id)
+
+        frame = RevokeFrame.from_dict(vector["input"]["revoke_frame"])
+
+        assert _canonical_json(frame.unsigned_dict()) == vector["expected"]["canonical_for_signing"]
+        assert "signature" not in frame.unsigned_dict()
+
+    @pytest.mark.parametrize("vector_id", ["nip.revoke.004", "nip.revoke.005"])
+    def test_revoke_conformance_parent_shape_vectors_reject(self, vector_id):
+        vectors = _load_vector_file("revoke_frame_vectors.json")["vectors"]
+        vector = next(v for v in vectors if v["id"] == vector_id)
+
+        with pytest.raises(ValueError, match="NIP-REVOKE-FRAME-INVALID"):
+            RevokeFrame.from_dict(vector["input"]["revoke_frame"])
 
 
 # ── TrustFrame ────────────────────────────────────────────────────────────────
@@ -206,7 +241,10 @@ class TestTrustFrame:
             grantee_ca="urn:nps:org:ca.partner.com",
             trust_scope=("nwp:query", "nwp:stream"),
             nodes=("nwp://example.com/data", "nwp://example.com/actions"),
+            issued_at="2026-05-11T00:00:00Z",
             expires_at="2027-04-16T00:00:00Z",
+            serial="00000000000A3F9C",
+            signer_nid="urn:nps:org:ca.example.com",
             signature=sig,
         )
 
@@ -232,7 +270,10 @@ class TestTrustFrame:
         assert out.grantee_ca  == frame.grantee_ca
         assert out.trust_scope == frame.trust_scope
         assert out.nodes       == frame.nodes
+        assert out.issued_at   == frame.issued_at
         assert out.expires_at  == frame.expires_at
+        assert out.serial      == frame.serial
+        assert out.signer_nid  == frame.signer_nid
 
     def test_roundtrip_msgpack(self, codec: NpsFrameCodec):
         frame = self._make_frame()
@@ -251,12 +292,23 @@ class TestTrustFrame:
             grantee_ca="urn:nps:org:ca.partner.com",
             trust_scope=("nwp:query",),
             nodes=("nwp://example.com/data",),
+            issued_at="2026-05-11T00:00:00Z",
             expires_at="2027-04-16T00:00:00Z",
+            serial="00000000000A3FA1",
+            signer_nid="urn:nps:org:ca.example.com",
             signature="",  # placeholder
         )
         unsigned = frame.unsigned_dict()
         sig      = identity.sign(unsigned)
         assert NipIdentity.verify_signature(identity.pub_key_string, unsigned, sig) is True
+
+    def test_trust_conformance_canonical_vector(self):
+        vector = _load_vector_file("trust_frame_vectors.json")["vectors"][0]
+
+        frame = TrustFrame.from_dict(vector["input"]["trust_frame"])
+
+        assert _canonical_json(frame.unsigned_dict()) == vector["expected"]["canonical_for_signing"]
+        assert "signature" not in frame.unsigned_dict()
 
 
 # ── IdentMetadata ─────────────────────────────────────────────────────────────

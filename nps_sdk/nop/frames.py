@@ -27,7 +27,7 @@ class TaskFrame(NpsFrame):
     """
     DAG task definition frame (NPS-5 §4.1).
 
-    Submitted to a Gateway Node or directly to an orchestrator to start a
+    Submitted to an Anchor Node or directly to an orchestrator to start a
     multi-agent DAG task. DelegateDepth=0 for root tasks; the orchestrator
     rejects frames with DelegateDepth >= 3 (NPS-5 §8.2).
     """

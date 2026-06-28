@@ -87,12 +87,12 @@ class TestManifest:
             ban_on=[ReputationRule(incident="*", severity=">=critical")],
         )
         app = AnchorNodeApp(_base_options(cgn_limit=500, reputation_policy=policy,
-                                          trust_anchors=["urn:nps:ca:root"]))
+                                          trust_anchors=["urn:nps:org:root"]))
         async with _client_for(app) as http:
             m = (await http.get(f"{PREFIX}/.nwm")).json()
         assert m["token_budget"] == {"cgn_limit": 500, "profile": "cgn.v1"}
         assert m["reputation_policy"]["log_sources"] == ["https://log.example.com"]
-        assert m["trust_anchors"] == ["urn:nps:ca:root"]
+        assert m["trust_anchors"] == ["urn:nps:org:root"]
 
     async def test_actions_endpoint(self) -> None:
         app = AnchorNodeApp(_base_options())

@@ -278,9 +278,9 @@ class TestNpsFrameCodecEdgeCases:
         assert header.frame_type == FrameType.ANCHOR
 
     def test_unsupported_tier_raises(self, codec: NpsFrameCodec, anchor: AnchorFrame):
-        # Pass a raw int (not JSON=0 or MSGPACK=1) to trigger the unsupported-tier error
+        # Pass the reserved tier 0x03 to trigger the unsupported-tier error.
         with pytest.raises(NpsCodecError):
-            codec._select_codec(0x02)  # type: ignore[arg-type]
+            codec._select_codec(0x03)  # type: ignore[arg-type]
 
     def test_unknown_frame_type_raises(self, codec: NpsFrameCodec):
         # Craft a wire message with an unregistered frame type (0x30 = ANNOUNCE, not in default registry)

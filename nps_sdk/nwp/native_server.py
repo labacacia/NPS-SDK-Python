@@ -10,7 +10,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 
 from nps_sdk.core.codec import NpsFrame, NpsFrameCodec
-from nps_sdk.core.frames import DEFAULT_HEADER_SIZE, EXTENDED_HEADER_SIZE, EncodingTier, FrameFlags, FrameHeader
+from nps_sdk.core.frames import DEFAULT_HEADER_SIZE, EXTENDED_HEADER_SIZE, EncodingTier, FrameFlags, FrameHeader, FrameType
 from nps_sdk.core.registry import FrameRegistry
 from nps_sdk.ncp.frames import CapsFrame, ErrorFrame
 from nps_sdk.nwp.frames import ActionFrame, QueryFrame
@@ -37,6 +37,7 @@ class NwpNativeNodeServer:
         codec: NpsFrameCodec | None = None,
         registry: FrameRegistry | None = None,
         tier: EncodingTier = EncodingTier.MSGPACK,
+        enabled_encodings: Sequence[str] | None = None,
         anchor_ref: str = "native:nwp",
         query_handler: NativeQueryHandler | None = None,
         action_handler: NativeActionHandler | None = None,
@@ -46,6 +47,7 @@ class NwpNativeNodeServer:
         self._registry = registry or FrameRegistry.create_full()
         self._codec = codec or NpsFrameCodec(self._registry)
         self._tier = tier
+        self._enabled_encodings = tuple(enabled_encodings or (_encoding_token(tier),))
         self._anchor_ref = anchor_ref
         self._query_handler = query_handler
         self._action_handler = action_handler
@@ -73,7 +75,8 @@ class NwpNativeNodeServer:
 
     async def dispatch_wire(self, wire: bytes) -> bytes:
         """Decode one wire frame, dispatch it, and return one encoded response frame."""
-        response = await self.dispatch(self._codec.decode(wire))
+        policy_error = _policy_error(self._codec.peek_header(wire), self._tier, self._enabled_encodings)
+        response = policy_error or await self.dispatch(self._codec.decode(wire))
         return self._codec.encode(response, override_tier=self._tier)
 
     async def serve_once(self, reader: Any, writer: Any) -> bool:
@@ -146,6 +149,35 @@ def _estimate_tokens(rows: Sequence[Any]) -> int:
     import json
 
     return max(1, len(json.dumps(list(rows), separators=(",", ":"))) // 4)
+
+
+def _policy_error(header: FrameHeader, default_tier: EncodingTier, enabled_encodings: Sequence[str]) -> ErrorFrame | None:
+    if header.encoding_tier == default_tier:
+        return None
+    if (
+        header.encoding_tier == EncodingTier.BINARY_VECTOR
+        and "binary_vector.v1" in enabled_encodings
+        and header.frame_type == FrameType.QUERY
+    ):
+        return None
+    return ErrorFrame(
+        status="NPS-SERVER-ENCODING-UNSUPPORTED",
+        error="NCP-ENCODING-UNSUPPORTED",
+        message=(
+            f"Frame type 0x{int(header.frame_type):02X} used {_encoding_token(header.encoding_tier)}, "
+            f"but the negotiated policy allows {', '.join(enabled_encodings)}."
+        ),
+    )
+
+
+def _encoding_token(tier: EncodingTier) -> str:
+    if tier == EncodingTier.JSON:
+        return "json"
+    if tier == EncodingTier.MSGPACK:
+        return "msgpack"
+    if tier == EncodingTier.BINARY_VECTOR:
+        return "binary_vector.v1"
+    return f"unknown:{int(tier)}"
 
 
 async def _read_wire_frame(reader: Any) -> bytes | None:

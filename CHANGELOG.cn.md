@@ -8,6 +8,13 @@
 
 ---
 
+## [1.0.0-alpha.15] —— 2026-06-28
+
+### 变更
+
+- 套件级 alpha.15 同步：对齐包元数据、当前 README / 版本 banner、分发源树以及 release-prep 说明到 NPS-Dev。
+- 承载源事实树中的 NCP Tier-3 BinaryVector、入站 NWP Bridge server 加固、NIP canonical trust/revoke，以及 NDP discovery canonical-form 对齐。
+
 ## [1.0.0-alpha.14] —— 2026-06-26
 
 ### Added
