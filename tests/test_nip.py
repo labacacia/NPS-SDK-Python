@@ -16,7 +16,7 @@ from nps_sdk.core.frames import EncodingTier, FrameType
 from nps_sdk.core.registry import FrameRegistry
 
 
-_NIP_VECTOR_DIR = Path(__file__).resolve().parents[3] / "spec" / "conformance" / "nip"
+_NIP_VECTOR_DIR = Path(__file__).resolve().parent / "fixtures" / "conformance" / "nip"
 
 
 def _load_vector_file(name: str) -> dict:

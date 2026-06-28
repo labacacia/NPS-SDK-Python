@@ -95,13 +95,7 @@ class TestQueryFrame:
         assert out.vector_search.top_k == 5
 
     def test_binary_vector_conformance_fixture(self, codec: NpsFrameCodec):
-        fixture_path = (
-            Path(__file__).resolve().parents[3]
-            / "spec"
-            / "conformance"
-            / "ncp"
-            / "binary_vector_payload_vectors.json"
-        )
+        fixture_path = Path(__file__).resolve().parent / "fixtures" / "conformance" / "ncp" / "binary_vector_payload_vectors.json"
         fixture = json.loads(fixture_path.read_text())
         positive = fixture["vectors"][0]
         payload = bytes.fromhex(positive["input"]["payload_hex"])
