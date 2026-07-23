@@ -2,7 +2,7 @@
 
 # NPS Python SDK (`nps-lib`)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](../../LICENSE)
-[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.15-orange.svg)](../../CHANGELOG.cn.md)
+[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.16-orange.svg)](../../CHANGELOG.cn.md)
 [![NCP](https://img.shields.io/badge/NCP-v0.9-5b8cff.svg)]()
 [![NWP](https://img.shields.io/badge/NWP-v0.14-4af0b0.svg)]()
 [![NIP](https://img.shields.io/badge/NIP-v0.10-7b61ff.svg)]()
@@ -15,7 +15,7 @@ PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 
 ## 状态
 
-**v1.0.0-alpha.15 —— RFC-0002 跨 SDK 端口波（第二棒语言）**
+**v1.0.0-alpha.16 —— RFC-0002 跨 SDK 端口波（第二棒语言）**
 
 包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端，**加完整 NPS-RFC-0002 X.509 + ACME `agent-01` NID 证书原语**（`nps_sdk.nip.x509` + `nps_sdk.nip.acme`）。
 
@@ -44,7 +44,7 @@ pip install "nps-lib[dev]"
 
 | 模块 | 说明 |
 |------|------|
-| `nps_sdk.core` | 帧头、编解码器（Tier-1 JSON / Tier-2 MsgPack）、anchor 缓存、异常类型 |
+| `nps_sdk.core` | 帧头、编解码器（Tier-1 JSON / Tier-2 MsgPack / Tier-3 BinaryVector）、anchor 缓存、异常类型 |
 | `nps_sdk.ncp`  | NCP 帧：AnchorFrame、DiffFrame、StreamFrame、CapsFrame、HelloFrame、ErrorFrame |
 | `nps_sdk.nwp`  | NWP 帧：QueryFrame、ActionFrame；异步 `NwpClient`；`NwpNativeNodeServer` native 服务端 |
 | `nps_sdk.nip`        | NIP 帧：IdentFrame（v2 双信任）、TrustFrame、RevokeFrame；`NipIdentity`（Ed25519）；`NipIdentVerifier` + `NipVerifierOptions`（RFC-0002 §8.1 双信任）；`AssuranceLevel`（RFC-0003）；远程 CA `NipCaClient` |
@@ -175,10 +175,10 @@ results = [NpsConformanceCaseResult(case.id, "pass") for case in catalog_for_pro
 manifest = NpsConformanceManifest.create(
     profile=NODE_L1,
     iut_name="my-node",
-    iut_version="1.0.0-alpha.15",
+    iut_version="1.0.0-alpha.16",
     iut_nid="urn:nps:node:example.com:my-node",
     peer_name="labacacia-fixture",
-    peer_version="1.0.0-alpha.15",
+    peer_version="1.0.0-alpha.16",
     results=results,
 )
 result = validate_manifest(manifest)
@@ -202,6 +202,7 @@ nps_sdk/
 |------|----|------|
 | Tier-1 JSON    | `0x00` | UTF-8 JSON，用于开发 / 兼容场景 |
 | Tier-2 MsgPack | `0x01` | MessagePack 二进制，体积缩小约 60%。**生产环境默认值。** |
+| Tier-3 BinaryVector | `0x02` | `binary_vector.v1`：MessagePack 元数据 + little-endian float32 向量段，用于向量密集型帧。 |
 
 ### NWP HTTP Overlay 模式
 

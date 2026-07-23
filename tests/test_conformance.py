@@ -24,7 +24,7 @@ def test_validator_accepts_complete_l1_manifest() -> None:
         "0.1.0",
         "urn:nps:node:example.test:node-1",
         "reference",
-        "1.0.0-alpha.15",
+        "1.0.0-alpha.16",
         tuple(NpsConformanceCaseResult(c.id, "na" if c.optional else "pass") for c in NODE_L1_CASES),
     )
 
@@ -40,7 +40,7 @@ def test_validator_rejects_missing_case() -> None:
         "0.1.0",
         "urn:nps:node:example.test:node-1",
         "reference",
-        "1.0.0-alpha.15",
+        "1.0.0-alpha.16",
         tuple(NpsConformanceCaseResult(c.id, "pass") for c in NODE_L1_CASES[:-1]),
     )
 

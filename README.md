@@ -2,7 +2,7 @@ English | [中文版](./README.cn.md)
 
 # NPS Python SDK (`nps-lib`)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](../../LICENSE)
-[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.15-orange.svg)](../../CHANGELOG.md)
+[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.16-orange.svg)](../../CHANGELOG.md)
 [![NCP](https://img.shields.io/badge/NCP-v0.9-5b8cff.svg)]()
 [![NWP](https://img.shields.io/badge/NWP-v0.14-4af0b0.svg)]()
 [![NIP](https://img.shields.io/badge/NIP-v0.10-7b61ff.svg)]()
@@ -15,7 +15,7 @@ PyPI package: `nps-lib` | Python namespace: `nps_sdk`
 
 ## Status
 
-**v1.0.0-alpha.15 — RFC-0002 cross-SDK port (second language)**
+**v1.0.0-alpha.16 — RFC-0002 cross-SDK port (second language)**
 
 Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, Ed25519 identity management, **plus full NPS-RFC-0002 X.509 + ACME `agent-01` NID certificate primitives** (`nps_sdk.nip.x509` + `nps_sdk.nip.acme`).
 
@@ -44,7 +44,7 @@ pip install "nps-lib[dev]"
 
 | Module | Description |
 |--------|-------------|
-| `nps_sdk.core` | Frame header, codec (Tier-1 JSON / Tier-2 MsgPack), anchor cache, exceptions |
+| `nps_sdk.core` | Frame header, codec (Tier-1 JSON / Tier-2 MsgPack / Tier-3 BinaryVector), anchor cache, exceptions |
 | `nps_sdk.ncp`  | NCP frames: AnchorFrame, DiffFrame, StreamFrame, CapsFrame, HelloFrame, ErrorFrame |
 | `nps_sdk.nwp`  | NWP frames: QueryFrame, ActionFrame; async `NwpClient`; native serving via `NwpNativeNodeServer` |
 | `nps_sdk.nip`        | NIP frames: IdentFrame (v2 dual-trust), TrustFrame, RevokeFrame; `NipIdentity` (Ed25519); `NipIdentVerifier` + `NipVerifierOptions` (RFC-0002 §8.1 dual-trust); `AssuranceLevel` (RFC-0003); remote CA `NipCaClient` |
@@ -175,10 +175,10 @@ results = [NpsConformanceCaseResult(case.id, "pass") for case in catalog_for_pro
 manifest = NpsConformanceManifest.create(
     profile=NODE_L1,
     iut_name="my-node",
-    iut_version="1.0.0-alpha.15",
+    iut_version="1.0.0-alpha.16",
     iut_nid="urn:nps:node:example.com:my-node",
     peer_name="labacacia-fixture",
-    peer_version="1.0.0-alpha.15",
+    peer_version="1.0.0-alpha.16",
     results=results,
 )
 result = validate_manifest(manifest)
@@ -200,6 +200,7 @@ nps_sdk/
 |------|-------|-------------|
 | Tier-1 JSON    | `0x00` | UTF-8 JSON. Development / compatibility. |
 | Tier-2 MsgPack | `0x01` | MessagePack binary. ~60% smaller. **Production default.** |
+| Tier-3 BinaryVector | `0x02` | `binary_vector.v1`: MessagePack metadata plus little-endian float32 vector segments for vector-heavy frames. |
 
 ### NWP HTTP Overlay Mode
 
