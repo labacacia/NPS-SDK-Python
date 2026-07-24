@@ -130,7 +130,7 @@ def _build_leaf_without_eku(
 class TestNipX509:
     """Mirror of .NET / Java NipX509Tests (5 cases)."""
 
-    def test_register_x509_round_trip_verifier_accepts(self):
+    async def test_register_x509_round_trip_verifier_accepts(self):
         """Happy path: dual-trust v2 frame, both v1 + X.509 verify."""
         ca = Ed25519PrivateKey.generate()
         agent = Ed25519PrivateKey.generate()
@@ -156,11 +156,11 @@ class TestNipX509:
             trusted_ca_public_keys={"urn:nps:org:test": _pub_key_string(ca.public_key())},
             trusted_x509_roots=(root,),
         )
-        result = NipIdentVerifier(opts).verify(frame, "urn:nps:org:test")
+        result = await NipIdentVerifier(opts).verify(frame)
 
         assert result.valid, f"step={result.step_failed} err={result.error_code} msg={result.message}"
 
-    def test_register_x509_leaf_eku_stripped_verifier_rejects(self):
+    async def test_register_x509_leaf_eku_stripped_verifier_rejects(self):
         """Tampered chain whose leaf has no EKU triggers NIP-CERT-EKU-MISSING."""
         ca = Ed25519PrivateKey.generate()
         agent = Ed25519PrivateKey.generate()
@@ -181,13 +181,13 @@ class TestNipX509:
             trusted_ca_public_keys={"urn:nps:org:test": _pub_key_string(ca.public_key())},
             trusted_x509_roots=(root,),
         )
-        result = NipIdentVerifier(opts).verify(frame, "urn:nps:org:test")
+        result = await NipIdentVerifier(opts).verify(frame)
 
         assert not result.valid
         assert result.error_code == error_codes.CERT_EKU_MISSING
         assert result.step_failed == 3
 
-    def test_register_x509_leaf_for_different_nid_verifier_rejects_subject_mismatch(self):
+    async def test_register_x509_leaf_for_different_nid_verifier_rejects_subject_mismatch(self):
         """Forged leaf for different NID triggers NIP-CERT-SUBJECT-NID-MISMATCH."""
         ca = Ed25519PrivateKey.generate()
         agent = Ed25519PrivateKey.generate()
@@ -214,13 +214,13 @@ class TestNipX509:
             trusted_ca_public_keys={"urn:nps:org:test": _pub_key_string(ca.public_key())},
             trusted_x509_roots=(root,),
         )
-        result = NipIdentVerifier(opts).verify(frame, "urn:nps:org:test")
+        result = await NipIdentVerifier(opts).verify(frame)
 
         assert not result.valid
         assert result.error_code == error_codes.CERT_SUBJECT_NID_MISMATCH
         assert result.step_failed == 3
 
-    def test_v1_only_verifier_accepts_v2_frame_by_ignoring_cert_chain(self):
+    async def test_v1_only_verifier_accepts_v2_frame_by_ignoring_cert_chain(self):
         """Phase 1 backward compat: v1-only verifier ignores cert_chain."""
         ca = Ed25519PrivateKey.generate()
         agent = Ed25519PrivateKey.generate()
@@ -246,10 +246,10 @@ class TestNipX509:
         opts = NipVerifierOptions(
             trusted_ca_public_keys={"urn:nps:org:test": _pub_key_string(ca.public_key())},
         )
-        result = NipIdentVerifier(opts).verify(frame, "urn:nps:org:test")
+        result = await NipIdentVerifier(opts).verify(frame)
         assert result.valid, f"v1-only verifier MUST accept v2 frames; got {result.error_code}"
 
-    def test_v2_verifier_rejects_v2_frame_when_trusted_roots_missing(self):
+    async def test_v2_verifier_rejects_v2_frame_when_trusted_roots_missing(self):
         """v2 verifier with wrong trust roots rejects the chain."""
         ca = Ed25519PrivateKey.generate()
         agent = Ed25519PrivateKey.generate()
@@ -284,7 +284,7 @@ class TestNipX509:
             trusted_ca_public_keys={"urn:nps:org:test": _pub_key_string(ca.public_key())},
             trusted_x509_roots=(other_root,),
         )
-        result = NipIdentVerifier(opts).verify(frame, "urn:nps:org:test")
+        result = await NipIdentVerifier(opts).verify(frame)
 
         assert not result.valid
         assert result.error_code == error_codes.CERT_FORMAT_INVALID

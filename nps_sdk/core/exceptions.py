@@ -16,6 +16,10 @@ class NpsCodecError(NpsError):
     """Raised when a frame cannot be encoded or decoded."""
 
 
+class NpsEncodingUnsupportedError(NpsError):
+    """Raised when a frame uses an encoding tier the negotiated policy forbids."""
+
+
 class NpsAnchorNotFoundError(NpsError):
     """Raised when an anchor_id is referenced but not present in the cache."""
 

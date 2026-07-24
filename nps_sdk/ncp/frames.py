@@ -344,6 +344,65 @@ class HelloFrame(NpsFrame):
         )
 
 
+# ── NcpHandshakeCapsFrame (0x04, native-mode handshake response) ──────────────
+
+@dataclasses.dataclass(frozen=True)
+class NcpHandshakeCapsFrame(NpsFrame):
+    """
+    Server's capability response to :class:`HelloFrame` in native mode (NPS-1 §4.6).
+
+    Carries the server NID and its capability list. Uses frame type 0x04 (Caps)
+    on the wire. The response frame header determines the stable default
+    encoding; optional payload fields echo the full enabled encoding policy for
+    extensions such as BinaryVector.
+    """
+
+    node_id:             str
+    caps:                tuple[str, ...]
+    negotiated_encoding: str | None            = None
+    enabled_encodings:   tuple[str, ...] | None = None
+    anchor_ref:          str | None            = None
+    payload:             Any                    = None
+
+    @property
+    def frame_type(self) -> FrameType:
+        return FrameType.CAPS
+
+    @property
+    def preferred_tier(self) -> EncodingTier:
+        return EncodingTier.JSON
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "node_id": self.node_id,
+            "caps":    list(self.caps),
+        }
+        if self.negotiated_encoding is not None:
+            d["negotiated_encoding"] = self.negotiated_encoding
+        if self.enabled_encodings is not None:
+            d["enabled_encodings"] = list(self.enabled_encodings)
+        if self.anchor_ref is not None:
+            d["anchor_ref"] = self.anchor_ref
+        if self.payload is not None:
+            d["payload"] = self.payload
+        return d
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "NcpHandshakeCapsFrame":
+        return cls(
+            node_id=data["node_id"],
+            caps=tuple(data.get("caps", [])),
+            negotiated_encoding=data.get("negotiated_encoding"),
+            enabled_encodings=(
+                tuple(data["enabled_encodings"])
+                if data.get("enabled_encodings") is not None
+                else None
+            ),
+            anchor_ref=data.get("anchor_ref"),
+            payload=data.get("payload"),
+        )
+
+
 # ── ErrorFrame (0xFE) ────────────────────────────────────────────────────────
 
 @dataclasses.dataclass(frozen=True)

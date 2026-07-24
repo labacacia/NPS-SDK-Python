@@ -38,11 +38,12 @@ class TaskFrame(NpsFrame):
     max_retries:    int     = 2
     priority:       str     = TaskPriority.NORMAL
     callback_url:   str | None = None     # must be https:// (SSRF protection)
+    callback_secret: str | None = None    # base64url 32-byte HMAC key (X-NPS-Signature)
     preflight:      bool    = False
     context:        TaskContext | None = None
     request_id:     str | None = None
     delegate_depth: int     = 0
-    compensation_policy: str = "none"   # "none" | "on_failure" | "always"
+    compensation_policy: str = "none"   # best_effort | strict | none | on_failure | always
 
     @property
     def frame_type(self) -> FrameType:
@@ -64,6 +65,8 @@ class TaskFrame(NpsFrame):
         }
         if self.callback_url is not None:
             d["callback_url"] = self.callback_url
+        if self.callback_secret is not None:
+            d["callback_secret"] = self.callback_secret
         if self.context is not None:
             d["context"] = self.context.to_dict()
         if self.request_id is not None:
@@ -82,6 +85,7 @@ class TaskFrame(NpsFrame):
             max_retries=int(data.get("max_retries", 2)),
             priority=data.get("priority", TaskPriority.NORMAL),
             callback_url=data.get("callback_url"),
+            callback_secret=data.get("callback_secret"),
             preflight=bool(data.get("preflight", False)),
             context=TaskContext.from_dict(ctx_raw) if ctx_raw else None,
             request_id=data.get("request_id"),

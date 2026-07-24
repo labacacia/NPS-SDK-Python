@@ -36,9 +36,38 @@ class TaskPriority:
 
 
 class CompensationPolicy:
-    NONE       = "none"
-    ON_FAILURE = "on_failure"
-    ALWAYS     = "always"
+    """Valid values for ``TaskFrame.compensation_policy`` (NPS-5 §3.5).
+
+    ``best_effort`` and ``strict`` are the NPS-5 wire values. ``on_failure``,
+    ``none``, and ``always`` remain accepted legacy / extension aliases for
+    interop with the .NET reference implementation.
+    """
+
+    BEST_EFFORT = "best_effort"
+    STRICT      = "strict"
+    NONE        = "none"
+    ON_FAILURE  = "on_failure"   # legacy alias for BEST_EFFORT
+    ALWAYS      = "always"       # extension: compensate on success and failure
+
+    @staticmethod
+    def runs_on_failure(policy: str | None) -> bool:
+        """True when compensation runs after a task failure."""
+        return policy in (
+            CompensationPolicy.BEST_EFFORT,
+            CompensationPolicy.STRICT,
+            CompensationPolicy.ON_FAILURE,
+            CompensationPolicy.ALWAYS,
+        )
+
+    @staticmethod
+    def runs_on_success(policy: str | None) -> bool:
+        """True when compensation runs after a successful task."""
+        return policy == CompensationPolicy.ALWAYS
+
+    @staticmethod
+    def is_strict(policy: str | None) -> bool:
+        """True when a missing or failed compensation step is terminal."""
+        return policy == CompensationPolicy.STRICT
 
 
 class AggregateStrategy:

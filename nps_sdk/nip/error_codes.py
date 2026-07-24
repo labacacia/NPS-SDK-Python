@@ -63,6 +63,12 @@ ACME_CHALLENGE_FAILED     = "NIP-ACME-CHALLENGE-FAILED"
 # ── Chain / parent revocation (NPS-3 §5.1.3 / NPS-CR-0003) ──────────────────
 CERT_PARENT_REVOKED       = "NIP-CERT-PARENT-REVOKED"
 
+# ── Registration Authority enrollment (NPS-CR-0005 §3) ──────────────────────
+RA_TOKEN_INVALID    = "NIP-RA-TOKEN-INVALID"
+RA_TOKEN_EXPIRED    = "NIP-RA-TOKEN-EXPIRED"
+RA_NID_NOT_ALLOWED  = "NIP-RA-NID-NOT-ALLOWED"
+RA_PENDING_REJECTED = "NIP-RA-PENDING-REJECTED"
+
 # ── NPS status mapping ────────────────────────────────────────────────────────
 from nps_sdk.core.status_codes import (  # noqa: E402
     NPS_AUTH_FORBIDDEN,
@@ -98,6 +104,10 @@ NIP_ERROR_TO_NPS_STATUS: dict[str, str] = {
     CA_SESSION_VALIDITY_INVALID:        NPS_CLIENT_BAD_PARAM,
     CA_JWS_INVALID:                     NPS_AUTH_UNAUTHENTICATED,
     CA_JWS_EXPIRED:                     NPS_AUTH_UNAUTHENTICATED,
+    RA_TOKEN_INVALID:                   NPS_AUTH_UNAUTHENTICATED,
+    RA_TOKEN_EXPIRED:                   NPS_AUTH_UNAUTHENTICATED,
+    RA_NID_NOT_ALLOWED:                 NPS_AUTH_FORBIDDEN,
+    RA_PENDING_REJECTED:                NPS_AUTH_FORBIDDEN,
     OCSP_UNAVAILABLE:                   NPS_SERVER_UNAVAILABLE,
     OCSP_STAPLE_EXPIRED:                NPS_AUTH_UNAUTHENTICATED,
     TRUST_FRAME_INVALID:                NPS_CLIENT_BAD_FRAME,

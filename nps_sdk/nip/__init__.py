@@ -3,7 +3,15 @@
 
 """NPS NIP — Neural Identity Protocol frames and identity management."""
 
-from nps_sdk.nip.frames import IdentFrame, IdentMetadata, IdentReputationPolicyHint, RevokeFrame, TrustFrame
+from nps_sdk.nip.frames import (
+    IdentFrame,
+    IdentLineage,
+    IdentLineageRole,
+    IdentMetadata,
+    IdentReputationPolicyHint,
+    RevokeFrame,
+    TrustFrame,
+)
 from nps_sdk.nip.identity import NipIdentity
 from nps_sdk.nip.ca_client import (
     NipCaClient,
@@ -19,6 +27,20 @@ from nps_sdk.nip.ca_client import (
 )
 from nps_sdk.nip import error_codes
 from nps_sdk.nip.error_codes import NIP_ERROR_TO_NPS_STATUS
+from nps_sdk.nip.verifier import (
+    NipCertRecord,
+    NipIdentVerifier,
+    NipIdentVerifyResult,
+    NipRevocationCheck,
+    NipRevocationStore,
+    NipVerifierOptions,
+    NipVerifyContext,
+    nwp_path_matches,
+)
+from nps_sdk.nip.trust_validator import (
+    TrustFrameValidationContext,
+    TrustFrameValidator,
+)
 from nps_sdk.nip.reputation import (
     IncidentType,
     InclusionProof,
@@ -31,9 +53,37 @@ from nps_sdk.nip.reputation import (
     sign_entry,
     verify_entry,
 )
+from nps_sdk.nip.ca import (
+    AllowlistPolicy,
+    BootstrapTokenInfo,
+    BootstrapTokenPolicy,
+    EnrollmentTier,
+    FlattenedJws,
+    IBootstrapTokenStore,
+    IEnrollmentPolicy,
+    INipCaStore,
+    IPendingStore,
+    InMemoryBootstrapTokenStore,
+    InMemoryNipCaStore,
+    InMemoryPendingStore,
+    NipCaCertRecord,
+    NipCaException,
+    NipCaOptions,
+    NipCaRouterApp,
+    NipCaService,
+    NipGroupJws,
+    NipRaPendingException,
+    NipVerifyResult,
+    PendingQueuePolicy,
+    PendingRegistration,
+    PendingStatus,
+    create_enrollment_policy,
+)
 
 __all__ = [
     "IdentFrame",
+    "IdentLineage",
+    "IdentLineageRole",
     "IdentMetadata",
     "IdentReputationPolicyHint",
     "RevokeFrame",
@@ -51,6 +101,16 @@ __all__ = [
     "NipCaVerifyResponse",
     "error_codes",
     "NIP_ERROR_TO_NPS_STATUS",
+    "NipCertRecord",
+    "NipIdentVerifier",
+    "NipIdentVerifyResult",
+    "NipRevocationCheck",
+    "NipRevocationStore",
+    "NipVerifierOptions",
+    "NipVerifyContext",
+    "nwp_path_matches",
+    "TrustFrameValidationContext",
+    "TrustFrameValidator",
     "IncidentType",
     "InclusionProof",
     "ObservationWindow",
@@ -61,4 +121,29 @@ __all__ = [
     "SignedTreeHead",
     "sign_entry",
     "verify_entry",
+    # ── CA service library (NPS-3 §6–8, CR-0003, CR-0005, RFC-0002) ─────────
+    "NipCaService",
+    "NipCaOptions",
+    "NipVerifyResult",
+    "NipCaException",
+    "NipCaCertRecord",
+    "INipCaStore",
+    "InMemoryNipCaStore",
+    "EnrollmentTier",
+    "IEnrollmentPolicy",
+    "AllowlistPolicy",
+    "BootstrapTokenPolicy",
+    "IBootstrapTokenStore",
+    "InMemoryBootstrapTokenStore",
+    "BootstrapTokenInfo",
+    "PendingQueuePolicy",
+    "IPendingStore",
+    "InMemoryPendingStore",
+    "PendingRegistration",
+    "PendingStatus",
+    "NipRaPendingException",
+    "create_enrollment_policy",
+    "FlattenedJws",
+    "NipGroupJws",
+    "NipCaRouterApp",
 ]
