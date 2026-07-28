@@ -8,6 +8,22 @@
 
 ---
 
+## [1.0.0-alpha.17] —— 未发布
+
+### 新增
+
+- 将参考服务端能力移植到 Python SDK：NCP 原生传输、NWP action/complex/memory node 与双向 Bridge、NIP CA 服务及完整验证、NOP 编排、daemon 可观测性和 telemetry。
+
+### 修复
+
+- 生成 UTC reputation 时间戳时不再依赖已弃用的 naive-datetime API。
+
+## [1.0.0-alpha.16] —— 2026-07-23
+
+### 变更
+
+- 完成套件级 alpha.16 源码同步与协议兼容性更新。
+
 ## [1.0.0-alpha.15] —— 2026-06-28
 
 ### 变更

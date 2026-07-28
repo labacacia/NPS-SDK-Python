@@ -2,7 +2,7 @@
 
 # NPS Python SDK (`nps-lib`)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](../../LICENSE)
-[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.16-orange.svg)](../../CHANGELOG.cn.md)
+[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.17-orange.svg)](../../CHANGELOG.cn.md)
 [![NCP](https://img.shields.io/badge/NCP-v0.9-5b8cff.svg)]()
 [![NWP](https://img.shields.io/badge/NWP-v0.14-4af0b0.svg)]()
 [![NIP](https://img.shields.io/badge/NIP-v0.10-7b61ff.svg)]()
@@ -15,11 +15,11 @@ PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 
 ## 状态
 
-**v1.0.0-alpha.16 —— RFC-0002 跨 SDK 端口波（第二棒语言）**
+**v1.0.0-alpha.17 候选 —— 服务端与编排能力对齐**
 
 包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端，**加完整 NPS-RFC-0002 X.509 + ACME `agent-01` NID 证书原语**（`nps_sdk.nip.x509` + `nps_sdk.nip.acme`）。
 
-测试数：221 个（覆盖 SDK + RFC-0002/0003/0004），全绿。
+测试数：1049 个（覆盖 SDK + RFC-0002/0003/0004），全绿。
 
 Alpha.14 候选新增：远程 NIP CA 类型化客户端（`nps_sdk.nip.NipCaClient`）、native-mode NWP 服务端 helper（`nps_sdk.nwp.NwpNativeNodeServer`）和 TC-N1/TC-N2 一致性 manifest helper（`nps_sdk.conformance`）。
 
@@ -28,9 +28,9 @@ Alpha.14 候选新增：远程 NIP CA 类型化客户端（`nps_sdk.nip.NipCaCli
 - Python 3.11+
 - 依赖：`msgpack`、`httpx`、`cryptography`
 
-## main 分支未发布内容
+## Alpha.17 候选
 
-`main` 分支额外携带 **alpha.16 周期的服务端面 parity 移植**（尚未进入任何已发布包；随下一个套件版本发布）：
+该候选包含计划随下一个套件版本发布的服务端面 parity 移植：
 
 - **NOP 编排引擎** —— DAG 校验器、条件求值器、输入映射、结果聚合、任务存储、Worker 客户端、回调校验、instrumentation
 - **NCP 原生模式传输** —— server、session、client、帧 IO、握手 caps、编码策略、patch 格式
