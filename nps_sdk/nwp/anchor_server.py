@@ -90,6 +90,160 @@ class TopologyProtocolError(Exception):
         self.message = message
 
 
+class AnchorRole:
+    """Ownership role of an Anchor within its cluster (NPS-CR-0009 §3.2)."""
+
+    ACTIVE = "active"
+    STANDBY = "standby"
+
+
+class AnchorEpochGuard:
+    """Epoch fence + leader check for a multi-Anchor cluster (NPS-CR-0009 §3.2).
+
+    Intra-cluster consensus (Raft/Paxos/a lease store) is explicitly out of scope and
+    implementation-defined; only the observable wire contract below is normative.
+
+    Two deliberately asymmetric rules:
+
+    * **Epoch fence** — an inbound frame carrying a *strictly greater* ``cluster_epoch``
+      means this Anchor is a superseded leader. It self-fences: demotes to standby, emits
+      a terminal ``anchor_failover`` and raises ``NWP-ANCHOR-EPOCH-FENCED``. An equal or
+      lower inbound epoch is **not** an error.
+    * **Leader check** — a topology *write* is rejected with ``NWP-ANCHOR-NOT-LEADER``
+      when this Anchor is a standby, or is the active owner but quorum-lost (read-only
+      degraded). Reads are always allowed; a standby MAY serve stale reads stamped with
+      its last-known epoch.
+
+    Both errors map to ``NPS-CLIENT-CONFLICT`` (HTTP 409).
+    """
+
+    def __init__(
+        self,
+        anchor_nid: str,
+        own_epoch: int = 1,
+        role: str = AnchorRole.ACTIVE,
+        on_event: "Callable[[TopologyEvent], None] | None" = None,
+        close_streams: "Callable[[], None] | None" = None,
+    ) -> None:
+        if own_epoch < 1:
+            raise ValueError("own_epoch must be >= 1")
+        self.anchor_nid = anchor_nid
+        self.own_epoch = int(own_epoch)
+        self.role = role
+        self.degraded = False
+        self.fenced = False
+        #: Every event this guard has emitted, newest last — the wire feed for subscribers.
+        self.events: list[TopologyEvent] = []
+        self._on_event = on_event
+        self._close_streams = close_streams
+
+    # ── (a) epoch fence + (b) leader check ────────────────────────────────────
+
+    def check_inbound(
+        self,
+        cluster_epoch: int | None,
+        *,
+        is_topology_write: bool = False,
+        sender_anchor_nid: str | None = None,
+    ) -> None:
+        """Apply the fence to any inbound frame, then the leader check to writes.
+
+        :param cluster_epoch: the inbound frame's ``cluster_epoch``; ``None`` means 1.
+        :raises TopologyProtocolError: ``NWP-ANCHOR-EPOCH-FENCED`` or
+            ``NWP-ANCHOR-NOT-LEADER``.
+        """
+        inbound = 1 if cluster_epoch is None else int(cluster_epoch)
+
+        # (a) EPOCH FENCE — first, and for ANY inbound frame, read or write.
+        if inbound > self.own_epoch:
+            self.role = AnchorRole.STANDBY
+            self.fenced = True
+            self._emit(
+                AnchorState.failover(
+                    successor_nid=sender_anchor_nid or "",
+                    cluster_epoch=inbound,
+                    reason=AnchorState.REASON_ACTIVE_LOST,
+                )
+            )
+            if self._close_streams is not None:
+                self._close_streams()
+            raise TopologyProtocolError(
+                error_codes.ANCHOR_EPOCH_FENCED,
+                "NPS-CLIENT-CONFLICT",
+                f"Inbound cluster_epoch {inbound} exceeds this Anchor's epoch "
+                f"{self.own_epoch}; this Anchor is a superseded leader and is fenced.",
+            )
+        # inbound <= own_epoch is NOT an error.
+
+        # (b) LEADER CHECK — writes only.
+        if is_topology_write and (self.role != AnchorRole.ACTIVE or self.degraded):
+            reason = (
+                "the Anchor lost quorum and is read-only degraded"
+                if self.degraded and self.role == AnchorRole.ACTIVE
+                else "this Anchor is a standby"
+            )
+            raise TopologyProtocolError(
+                error_codes.ANCHOR_NOT_LEADER,
+                "NPS-CLIENT-CONFLICT",
+                f"Topology writes are only accepted by the active cluster owner; {reason}.",
+            )
+
+        # (c) reads always proceed.
+
+    # ── response stamping ─────────────────────────────────────────────────────
+
+    def stamp(self, snapshot: TopologySnapshot) -> TopologySnapshot:
+        """Stamp *snapshot* with this Anchor's current epoch (NPS-2 §12.2)."""
+        snapshot.cluster_epoch = self.own_epoch
+        return snapshot
+
+    # ── state transitions ─────────────────────────────────────────────────────
+
+    def on_quorum_lost(self, quorum_size: int, available: int) -> AnchorState:
+        """Enter read-only-degraded and emit ``anchor_quorum_lost``.
+
+        Callers SHOULD additionally set their NDP self-announcement ``health`` to
+        ``"degraded"``.
+        """
+        self.degraded = True
+        event = AnchorState.quorum_lost(quorum_size, available)
+        self._emit(event)
+        return event
+
+    def on_quorum_restored(self) -> None:
+        """Leave read-only-degraded once quorum returns."""
+        self.degraded = False
+
+    def on_take_ownership(
+        self,
+        new_epoch: int,
+        reason: str = AnchorState.REASON_PLANNED,
+    ) -> AnchorState:
+        """Become the active owner at *new_epoch* and emit ``anchor_failover``.
+
+        *new_epoch* MUST be strictly greater than every epoch observed so far — the
+        epoch is a fencing token, so a re-used value would let a stale leader win.
+        The caller MUST re-sign and re-publish its AnnounceFrame with the new epoch:
+        ``cluster_epoch`` is inside the signed canonical form (NPS-CR-0009 §1.1).
+        """
+        if new_epoch <= self.own_epoch:
+            raise ValueError(
+                f"cluster_epoch must strictly increase: {new_epoch} <= {self.own_epoch}"
+            )
+        self.own_epoch = int(new_epoch)
+        self.role = AnchorRole.ACTIVE
+        self.degraded = False
+        self.fenced = False
+        event = AnchorState.failover(self.anchor_nid, self.own_epoch, reason)
+        self._emit(event)
+        return event
+
+    def _emit(self, event: TopologyEvent) -> None:
+        self.events.append(event)
+        if self._on_event is not None:
+            self._on_event(event)
+
+
 class AnchorActionError(Exception):
     """Raised by an :class:`AnchorInvokeHandler` to return an NWP error envelope."""
 
@@ -192,6 +346,9 @@ class AnchorActionSpec:
     timeout_ms_max: int | None = None
     required_capability: str | None = None
     async_: bool = False
+    # NPS-CR-0009 §3.2(b): actions that mutate cluster topology are accepted only by the
+    # active, non-degraded owner. Reads leave this False.
+    topology_write: bool = False
 
 
 @dataclasses.dataclass
@@ -289,6 +446,8 @@ def _snapshot_to_dict(s: TopologySnapshot) -> dict[str, Any]:
     }
     if s.truncated is not None:
         d["truncated"] = s.truncated
+    if s.cluster_epoch is not None:
+        d["cluster_epoch"] = s.cluster_epoch
     return d
 
 
@@ -349,6 +508,15 @@ def _json_bytes(obj: Any) -> bytes:
     return json.dumps(obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
+def _topology_http_status(nps_status: str) -> int:
+    """HTTP status for a :class:`TopologyProtocolError`'s NPS status."""
+    if nps_status == "NPS-AUTH-FORBIDDEN":
+        return 403
+    if nps_status == "NPS-CLIENT-CONFLICT":   # NWP-ANCHOR-NOT-LEADER / -EPOCH-FENCED
+        return 409
+    return 400
+
+
 # ── The ASGI app ───────────────────────────────────────────────────────────────
 
 class AnchorNodeApp:
@@ -362,12 +530,16 @@ class AnchorNodeApp:
         topology_service: AnchorTopologyService | None = None,
         reputation_evaluator: IReputationEvaluator | None = None,
         rate_limiter: AnchorRateLimiter | None = None,
+        epoch_guard: AnchorEpochGuard | None = None,
     ) -> None:
         self._opt = options
         self._handler = invoke_handler
         self._topology = topology_service
         self._evaluator = reputation_evaluator
         self._limiter = rate_limiter or AllowAllRateLimiter()
+        # NPS-CR-0009 §3.2. When absent the node behaves exactly as before the CR:
+        # a single-Anchor cluster that never fences and never stamps an epoch.
+        self._epoch = epoch_guard
         self._prefix = options.path_prefix.rstrip("/")
         self._nwm_json = _json_bytes(self._build_manifest())
         self._actions_json = _json_bytes({"actions": self._actions_dict()})
@@ -455,12 +627,18 @@ class AnchorNodeApp:
             return
 
         try:
+            # NPS-CR-0009 §3.2(a): the fence applies to any inbound frame, read included.
+            self._fence(body)
             req = _parse_snapshot_request(body)
             snapshot = await self._topology.get_snapshot(req)
         except TopologyProtocolError as ex:
-            status = 403 if ex.nps_status == "NPS-AUTH-FORBIDDEN" else 400
-            await self._send_error(send, status, ex.nps_status, ex.nwp_error_code, ex.message)
+            await self._send_error(send, _topology_http_status(ex.nps_status),
+                                   ex.nps_status, ex.nwp_error_code, ex.message)
             return
+
+        # NPS-2 §12.2: every topology.snapshot response carries the current cluster_epoch.
+        if self._epoch is not None:
+            snapshot = self._epoch.stamp(snapshot)
 
         caps = {
             "anchor_ref": TopologyWire.SNAPSHOT_ANCHOR_REF,
@@ -500,10 +678,11 @@ class AnchorNodeApp:
             return
 
         try:
+            self._fence(body)
             req, stream_id = _parse_stream_request(body)
         except TopologyProtocolError as ex:
-            status = 403 if ex.nps_status == "NPS-AUTH-FORBIDDEN" else 400
-            await self._send_error(send, status, ex.nps_status, ex.nwp_error_code, ex.message)
+            await self._send_error(send, _topology_http_status(ex.nps_status),
+                                   ex.nps_status, ex.nwp_error_code, ex.message)
             return
 
         # Start the NDJSON stream.
@@ -524,6 +703,9 @@ class AnchorNodeApp:
             "last_seq": 0,
             "resumed": req.since_version is not None,
         }
+        # NPS-2 §12.2: the stream response carries the current cluster_epoch too.
+        if self._epoch is not None:
+            ack["cluster_epoch"] = self._epoch.own_epoch
         await self._write_line(send, ack)
 
         try:
@@ -542,7 +724,8 @@ class AnchorNodeApp:
 
     async def _handle_invoke(self, receive: Callable, send: Callable, headers: dict[str, str]) -> None:
         try:
-            frame = ActionFrame.from_dict(json.loads(await _read_body(receive) or b"{}"))
+            raw = json.loads(await _read_body(receive) or b"{}")
+            frame = ActionFrame.from_dict(raw)
         except (json.JSONDecodeError, ValueError, KeyError) as ex:
             await self._send_error(send, 400, "NPS-CLIENT-BAD-REQUEST",
                                    error_codes.ACTION_PARAMS_INVALID, str(ex))
@@ -553,6 +736,15 @@ class AnchorNodeApp:
             await self._send_error(send, 404, "NPS-CLIENT-NOT-FOUND",
                                    error_codes.ACTION_NOT_FOUND,
                                    f"Unknown action_id '{frame.action_id}'.")
+            return
+
+        # NPS-CR-0009 §3.2: fence any inbound frame, and reject topology writes that
+        # reach a standby or a quorum-lost owner.
+        try:
+            self._fence(raw, is_topology_write=spec.topology_write)
+        except TopologyProtocolError as ex:
+            await self._send_error(send, _topology_http_status(ex.nps_status),
+                                   ex.nps_status, ex.nwp_error_code, ex.message)
             return
 
         if frame.async_ and not spec.async_:
@@ -725,6 +917,24 @@ class AnchorNodeApp:
         return False
 
     # ── Gates / helpers ──────────────────────────────────────────────────────────
+
+    def _fence(self, body: dict[str, Any], *, is_topology_write: bool = False) -> None:
+        """Run the NPS-CR-0009 §3.2 epoch fence / leader check over a decoded request body.
+
+        The Python HTTP binding carries the sender's fencing token as a top-level
+        ``cluster_epoch`` on the request body (and ``sender_anchor_nid`` alongside it).
+        A body with no ``cluster_epoch`` reads as epoch 1 and never fences.
+        """
+        if self._epoch is None:
+            return
+        raw = body.get("cluster_epoch")
+        epoch = int(raw) if isinstance(raw, int) else None
+        sender = body.get("sender_anchor_nid")
+        self._epoch.check_inbound(
+            epoch,
+            is_topology_write=is_topology_write,
+            sender_anchor_nid=sender if isinstance(sender, str) else None,
+        )
 
     async def _check_topology_capability(self, headers: dict[str, str], send: Callable) -> bool:
         if not self._opt.require_topology_capability:

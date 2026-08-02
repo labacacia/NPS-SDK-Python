@@ -26,6 +26,10 @@ class NpsX509Oids:
 
     # ── Custom extensions ────────────────────────────────────────────────────
     NID_ASSURANCE_LEVEL = ObjectIdentifier(EXTENSION_ARC + ".1")
+    # NIP v0.12 §7.5 — CA attestation of the node roles / capabilities an identity may
+    # claim. Both carry DER `SEQUENCE OF UTF8String`.
+    ID_NPS_NODE_ROLES   = ObjectIdentifier(EXTENSION_ARC + ".2")
+    ID_NPS_CAPABILITIES = ObjectIdentifier(EXTENSION_ARC + ".3")
 
     # ── Ed25519 algorithm OID per RFC 8410 ───────────────────────────────────
     ED25519 = ObjectIdentifier("1.3.101.112")

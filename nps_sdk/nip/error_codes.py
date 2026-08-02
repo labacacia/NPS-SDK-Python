@@ -60,6 +60,12 @@ CERT_EKU_MISSING          = "NIP-CERT-EKU-MISSING"
 CERT_SUBJECT_NID_MISMATCH = "NIP-CERT-SUBJECT-NID-MISMATCH"
 ACME_CHALLENGE_FAILED     = "NIP-ACME-CHALLENGE-FAILED"
 
+# ── NIP v0.12 §7.5 Phase-3 enforcement ───────────────────────────────────────
+# Note the deliberate status asymmetry between the two: an over-claimed role is a
+# malformed frame, an over-claimed capability is a privilege escalation attempt.
+CERT_NODE_ROLES_MISMATCH   = "NIP-CERT-NODE-ROLES-MISMATCH"
+CERT_CAPABILITIES_EXCEEDED = "NIP-CERT-CAPABILITIES-EXCEEDED"
+
 # ── Chain / parent revocation (NPS-3 §5.1.3 / NPS-CR-0003) ──────────────────
 CERT_PARENT_REVOKED       = "NIP-CERT-PARENT-REVOKED"
 
@@ -93,6 +99,8 @@ NIP_ERROR_TO_NPS_STATUS: dict[str, str] = {
     CERT_EKU_MISSING:                   NPS_CLIENT_BAD_FRAME,
     CERT_SUBJECT_NID_MISMATCH:          NPS_CLIENT_BAD_FRAME,
     CERT_PARENT_REVOKED:                NPS_AUTH_UNAUTHENTICATED,
+    CERT_NODE_ROLES_MISMATCH:           NPS_CLIENT_BAD_FRAME,
+    CERT_CAPABILITIES_EXCEEDED:         NPS_AUTH_FORBIDDEN,
     CA_NID_NOT_FOUND:                   NPS_CLIENT_NOT_FOUND,
     CA_NID_ALREADY_EXISTS:              NPS_CLIENT_CONFLICT,
     CA_SERIAL_DUPLICATE:                NPS_CLIENT_CONFLICT,

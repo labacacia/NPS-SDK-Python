@@ -36,8 +36,16 @@ NCP_ENC_AUTH_FAILED    = "NCP-ENC-AUTH-FAILED"
 NCP_VERSION_INCOMPATIBLE = "NCP-VERSION-INCOMPATIBLE"
 NCP_PREAMBLE_INVALID     = "NCP-PREAMBLE-INVALID"
 
+# ── Native-mode session binding (NPS-RFC-0006 §6.3–§6.4) ─────────────────────
+# Raised when the mTLS client-certificate NID does not match the session IdentFrame
+# NID, or a resumed TLS session's certificate NID differs from the ticket-bound NID.
+# NPS-CR-0009 §3.3 reuses it as the native-path failover trigger: it is what a client
+# sees when it reconnects to an Anchor that no longer owns the cluster.
+NCP_NID_MISMATCH         = "NCP-NID-MISMATCH"
+
 # ── NPS status mapping ────────────────────────────────────────────────────────
 from nps_sdk.core.status_codes import (  # noqa: E402
+    NPS_AUTH_UNAUTHENTICATED,
     NPS_CLIENT_NOT_FOUND,
     NPS_CLIENT_BAD_FRAME,
     NPS_CLIENT_CONFLICT,
@@ -68,4 +76,5 @@ NCP_ERROR_TO_NPS_STATUS: dict[str, str] = {
     NCP_ENC_AUTH_FAILED:          NPS_CLIENT_BAD_FRAME,
     NCP_VERSION_INCOMPATIBLE:     NPS_PROTO_VERSION_INCOMPATIBLE,
     NCP_PREAMBLE_INVALID:         NPS_PROTO_PREAMBLE_INVALID,
+    NCP_NID_MISMATCH:             NPS_AUTH_UNAUTHENTICATED,
 }

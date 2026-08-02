@@ -139,8 +139,21 @@ class AnnounceFrame(NpsFrame):
     node_type:    str | None = None
     node_roles:           tuple[str, ...] | None = None
     cluster_anchor:       str | None = None
+    # NPS-CR-0009 §3.1 — epoch under which this Anchor owns its ``cluster_anchor``
+    # cluster. Starts at 1 and STRICTLY increases on every ownership transfer, so it
+    # doubles as a fencing token. Absent means 1 (single-Anchor cluster) and is NOT
+    # an error. IN the signed canonical form: an inflated epoch on a replayed
+    # announcement must not verify, so changing it requires re-signing. When None the
+    # key is omitted entirely, keeping a single-Anchor frame's canonical bytes
+    # bit-identical to pre-CR-0009 frames.
+    cluster_epoch:        int | None = None
     spawn_spec_ref:       str | None = None
     bridge_protocols:     tuple[str, ...] | None = None
+    # NPS-CR-0010 §16.2 — external protocols this Bridge Node serves INBOUND
+    # (external → NPS). Independent of ``bridge_protocols`` (outbound) over the same
+    # value domain. Signed; omitted entirely when unset — receivers MUST read an
+    # absent value as [] (a pre-alpha.16 outbound-only Bridge Node).
+    bridge_inbound_protocols: tuple[str, ...] | None = None
     activation_mode:      str | None = None
     activation_endpoint:  NdpAddress | None = None
     heartbeat_interval_ms: int = 60_000
@@ -148,6 +161,8 @@ class AnnounceFrame(NpsFrame):
     # (last_seen updates every heartbeat, so it must not require a re-sign; §3.2.1).
     health:               str | None = None  # "healthy" / "degraded" / "draining"
     last_seen:            str | None = None  # ISO 8601 UTC liveness beat
+    # NDP v0.12 registry monotonic sequence. Signed when present.
+    graph_seq:            int | None = None
 
     @property
     def frame_type(self) -> FrameType:
@@ -185,14 +200,20 @@ class AnnounceFrame(NpsFrame):
             d["node_roles"] = list(self.node_roles)
         if self.cluster_anchor is not None:
             d["cluster_anchor"] = self.cluster_anchor
+        if self.cluster_epoch is not None:
+            d["cluster_epoch"] = self.cluster_epoch
         if self.spawn_spec_ref is not None:
             d["spawn_spec_ref"] = self.spawn_spec_ref
         if self.bridge_protocols is not None:
             d["bridge_protocols"] = list(self.bridge_protocols)
+        if self.bridge_inbound_protocols is not None:
+            d["bridge_inbound_protocols"] = list(self.bridge_inbound_protocols)
         if self.activation_mode is not None:
             d["activation_mode"] = self.activation_mode
         if self.activation_endpoint is not None:
             d["activation_endpoint"] = self.activation_endpoint.to_dict()
+        if self.graph_seq is not None:
+            d["graph_seq"] = self.graph_seq
         if self.health is not None:
             d["health"] = self.health
         if self.last_seen is not None:
@@ -204,6 +225,8 @@ class AnnounceFrame(NpsFrame):
         # Support legacy node_kind alias (pre-alpha.3)
         node_roles_raw = data.get("node_roles") or data.get("node_kind")
         bridge_protocols_raw = data.get("bridge_protocols")
+        bridge_inbound_raw = data.get("bridge_inbound_protocols")
+        cluster_epoch_raw = data.get("cluster_epoch")
         return cls(
             nid=data["nid"],
             addresses=tuple(NdpAddress.from_dict(a) for a in data.get("addresses", [])),
@@ -214,14 +237,19 @@ class AnnounceFrame(NpsFrame):
             node_type=data.get("node_type"),
             node_roles=tuple(node_roles_raw) if node_roles_raw is not None else None,
             cluster_anchor=data.get("cluster_anchor"),
+            # Absent stays absent — never normalised to 1 on read, since re-emitting an
+            # explicit 1 would change the signed canonical bytes (NPS-CR-0009 §1.1).
+            cluster_epoch=int(cluster_epoch_raw) if cluster_epoch_raw is not None else None,
             spawn_spec_ref=data.get("spawn_spec_ref"),
             bridge_protocols=tuple(bridge_protocols_raw) if bridge_protocols_raw is not None else None,
+            bridge_inbound_protocols=tuple(bridge_inbound_raw) if bridge_inbound_raw is not None else None,
             activation_mode=data.get("activation_mode"),
             activation_endpoint=NdpAddress.from_dict(data["activation_endpoint"])
                 if isinstance(data.get("activation_endpoint"), dict) else None,
             heartbeat_interval_ms=int(data.get("heartbeat_interval_ms", 60_000)),
             health=data.get("health"),
             last_seen=data.get("last_seen"),
+            graph_seq=int(data["graph_seq"]) if data.get("graph_seq") is not None else None,
         )
 
 

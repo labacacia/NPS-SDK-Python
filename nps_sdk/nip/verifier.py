@@ -39,6 +39,13 @@ from nps_sdk.nip import cert_format, error_codes
 from nps_sdk.nip.assurance_level import AssuranceLevel
 from nps_sdk.nip.frames import IdentFrame
 from nps_sdk.nip.identity import NipIdentity
+from nps_sdk.nip.phase3 import NipPhase3Enforcer
+from nps_sdk.nip.revocation_policy import (
+    NipRevocationEvaluation,
+    NipRevocationMode,
+    NipRevocationOutcome,
+    NipRevocationSource,
+)
 from nps_sdk.nip.x509.verifier import NipX509Verifier
 
 
@@ -150,8 +157,15 @@ class NipVerifierOptions:
     # secure default is fail-closed (returns NIP-OCSP-UNAVAILABLE).
     ocsp_fail_open: bool = False
 
+    # Required rejects certificates when no revocation source is configured.
+    revocation_mode: NipRevocationMode = NipRevocationMode.IF_CONFIGURED
+
     # Minimum required assurance level (NPS-RFC-0003). None disables the check.
     min_assurance_level: AssuranceLevel | None = None
+
+    # NIP v0.12 §7.5 hard failure switch for v2-x509 frames. Defaults false so
+    # Phase-1/2 deployments keep treating CA attestation as advisory.
+    phase3_enforcement: bool = False
 
     # Optional injected httpx client for OCSP (mainly for tests / connection reuse).
     http_client: httpx.AsyncClient | None = None
@@ -223,6 +237,15 @@ class NipIdentVerifier:
                     3,
                     x509_result.error_code or error_codes.CERT_FORMAT_INVALID,
                     x509_result.message or "X.509 chain validation failed.")
+            if self._opts.phase3_enforcement:
+                if x509_result.leaf is None:
+                    return NipIdentVerifyResult.fail(
+                        3,
+                        error_codes.CERT_FORMAT_INVALID,
+                        "X.509 verifier did not return a leaf certificate.")
+                phase3_result = NipPhase3Enforcer.enforce(frame, x509_result.leaf, now)
+                if not phase3_result.valid:
+                    return phase3_result
 
         # ── Step 4: Revocation ────────────────────────────────────────────────
         revocation_result = await self._check_revocation(frame)
@@ -250,31 +273,63 @@ class NipIdentVerifier:
     # ── Revocation (Step 4) ────────────────────────────────────────────────────
 
     async def _check_revocation(self, frame: IdentFrame) -> NipIdentVerifyResult:
+        evaluation = NipRevocationEvaluation(
+            self._opts.revocation_mode, self._opts.ocsp_fail_open)
+
         # Local CRL first (fast, no network).
-        if self._opts.local_revoked_serials and frame.serial in self._opts.local_revoked_serials:
-            return NipIdentVerifyResult.fail(
-                4, error_codes.CERT_REVOKED,
-                f"Certificate serial {frame.serial} is in the local revocation list.")
+        if self._opts.local_revoked_serials is not None:
+            outcome = (
+                NipRevocationOutcome.REVOKED
+                if frame.serial in self._opts.local_revoked_serials
+                else NipRevocationOutcome.GOOD
+            )
+            result = evaluation.observe(NipRevocationSource.LOCAL_CRL, outcome)
+            if result is not None:
+                return _revocation_result(result)
 
         if self._opts.revocation_check is not None:
-            callback_result = await self._opts.revocation_check(frame)
-            if callback_result is not None and not callback_result.valid:
-                return callback_result
+            try:
+                callback_result = await self._opts.revocation_check(frame)
+                if callback_result is not None and not callback_result.valid:
+                    return callback_result
+                result = evaluation.observe(
+                    NipRevocationSource.CALLBACK,
+                    NipRevocationOutcome.GOOD)
+            except Exception:
+                result = evaluation.observe(
+                    NipRevocationSource.CALLBACK,
+                    NipRevocationOutcome.UNAVAILABLE)
+            if result is not None:
+                return _revocation_result(result)
 
         if self._opts.revocation_store is not None:
-            record = await self._opts.revocation_store.get_by_serial(frame.serial)
-            if record is not None and record.revoked_at is not None:
-                return NipIdentVerifyResult.fail(
-                    4, error_codes.CERT_REVOKED,
-                    f"Certificate serial {frame.serial} was revoked at "
-                    f"{record.revoked_at}: {record.revoke_reason}")
+            try:
+                record = await self._opts.revocation_store.get_by_serial(frame.serial)
+                outcome = (
+                    NipRevocationOutcome.REVOKED
+                    if record is not None and record.revoked_at is not None
+                    else NipRevocationOutcome.GOOD
+                )
+                result = evaluation.observe(
+                    NipRevocationSource.CA_STORE, outcome)
+            except Exception:
+                result = evaluation.observe(
+                    NipRevocationSource.CA_STORE,
+                    NipRevocationOutcome.UNAVAILABLE)
+            if result is not None:
+                return _revocation_result(result)
 
         # OCSP call to the CA server (optional).
         if self._opts.ocsp_url is not None:
-            return await self._ocsp_check(frame.nid)
+            ocsp = await self._ocsp_check(frame.nid)
+            if not ocsp.valid:
+                return ocsp
+            result = evaluation.observe(
+                NipRevocationSource.OCSP, NipRevocationOutcome.GOOD)
+            if result is not None:
+                return _revocation_result(result)
 
-        # Pass-through when no revocation source is configured.
-        return NipIdentVerifyResult.ok()
+        return _revocation_result(evaluation.complete())
 
     async def _ocsp_check(self, nid: str) -> NipIdentVerifyResult:
         url = f"{self._opts.ocsp_url.rstrip('/')}/{_escape(nid)}"
@@ -297,7 +352,7 @@ class NipIdentVerifier:
                 return NipIdentVerifyResult.fail(
                     4, error_code, f"OCSP check failed for NID {nid}.")
             return NipIdentVerifyResult.ok()
-        except (httpx.HTTPError, httpx.TransportError) as exc:
+        except (httpx.HTTPError, ValueError) as exc:
             if self._opts.ocsp_fail_open:
                 return NipIdentVerifyResult.ok()
             return NipIdentVerifyResult.fail(
@@ -306,6 +361,15 @@ class NipIdentVerifier:
         finally:
             if owns_client:
                 await client.aclose()
+
+
+def _revocation_result(decision: Any) -> NipIdentVerifyResult:
+    if decision.valid:
+        return NipIdentVerifyResult.ok()
+    return NipIdentVerifyResult.fail(
+        decision.failed_step,
+        decision.error_code or error_codes.OCSP_UNAVAILABLE,
+        "Live revocation verification failed.")
 
 
 # ── Scope / path matching ──────────────────────────────────────────────────────

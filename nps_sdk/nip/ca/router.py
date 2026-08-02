@@ -132,6 +132,9 @@ class NipCaRouterApp:
         if method == "GET" and path == f"{pfx}/v1/crl":
             await self._crl(send)
             return
+        if method == "GET" and path == f"{pfx}/v1/certificates":
+            await self._certificates(send, headers)
+            return
 
         if method == "POST" and path == f"{pfx}/v1/agents/register":
             await self._register(send, headers, receive, "agent")
@@ -226,6 +229,12 @@ class NipCaRouterApp:
 
     async def _crl(self, send: Callable) -> None:
         revoked = await self._ca.get_crl()
+        revoked.sort(key=lambda r: (
+            r.revoked_at or datetime.datetime.min.replace(
+                tzinfo=datetime.timezone.utc),
+            r.serial,
+            r.nid,
+        ))
         entries = [
             {
                 "nid": r.nid,
@@ -243,6 +252,36 @@ class NipCaRouterApp:
         signed = dict(body)
         signed["signature"] = self._ca.sign_artifact(body)
         await self._json(send, 200, signed)
+
+    async def _certificates(
+        self,
+        send: Callable,
+        headers: dict[str, str],
+    ) -> None:
+        if not self._authorized(headers):
+            await self._unauthorized(send)
+            return
+        records = await self._ca.list_certificates()
+        records.sort(key=lambda r: (r.issued_at, r.serial))
+        entries = [
+            {
+                "nid": r.nid,
+                "entity_type": r.entity_type,
+                "serial": r.serial,
+                "pub_key": r.pub_key,
+                "capabilities": list(r.capabilities),
+                "scope": json.loads(r.scope_json),
+                "issued_by": r.issued_by,
+                "issued_at": _iso(r.issued_at),
+                "expires_at": _iso(r.expires_at),
+                "revoked_at": _iso(r.revoked_at) if r.revoked_at else None,
+                "revoke_reason": r.revoke_reason,
+                "nid_role": r.nid_role,
+                "parent_nid": r.parent_nid,
+            }
+            for r in records
+        ]
+        await self._json(send, 200, {"entries": entries})
 
     # ── Register (agent / node) ──────────────────────────────────────────────────
 

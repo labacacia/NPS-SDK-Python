@@ -10,6 +10,8 @@ from typing import Any
 
 import httpx
 
+from nps_sdk.nip.identity import NipIdentity
+
 
 @dataclasses.dataclass(frozen=True)
 class NipCaRegisterRequest:
@@ -114,6 +116,68 @@ class NipCaCrl:
             entries=tuple(NipCaCrlEntry.from_dict(x) for x in data.get("entries", [])),
             signature=data["signature"],
         )
+
+    def unsigned_dict(self) -> dict[str, Any]:
+        return {
+            "issued_by": self.issued_by,
+            "issued_at": self.issued_at,
+            "entries": [
+                {
+                    "nid": entry.nid,
+                    "serial": entry.serial,
+                    "revoked_at": entry.revoked_at,
+                    "reason": entry.reason,
+                }
+                for entry in self.entries
+            ],
+        }
+
+
+@dataclasses.dataclass(frozen=True)
+class NipCaCertificateRecord:
+    nid: str
+    entity_type: str
+    serial: str
+    pub_key: str
+    capabilities: tuple[str, ...]
+    scope: Any
+    issued_by: str
+    issued_at: str
+    expires_at: str
+    revoked_at: str | None = None
+    revoke_reason: str | None = None
+    nid_role: str | None = None
+    parent_nid: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "NipCaCertificateRecord":
+        return cls(
+            nid=data["nid"],
+            entity_type=data["entity_type"],
+            serial=data["serial"],
+            pub_key=data["pub_key"],
+            capabilities=tuple(data.get("capabilities", [])),
+            scope=data.get("scope"),
+            issued_by=data["issued_by"],
+            issued_at=data["issued_at"],
+            expires_at=data["expires_at"],
+            revoked_at=data.get("revoked_at"),
+            revoke_reason=data.get("revoke_reason"),
+            nid_role=data.get("nid_role"),
+            parent_nid=data.get("parent_nid"),
+        )
+
+
+@dataclasses.dataclass(frozen=True)
+class NipCaCertificateList:
+    entries: tuple[NipCaCertificateRecord, ...]
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "NipCaCertificateList":
+        return cls(tuple(
+            NipCaCertificateRecord.from_dict(item)
+            for item in data.get("entries", [])
+        ))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -220,6 +284,22 @@ class NipCaClient:
 
     async def get_crl(self) -> NipCaCrl:
         return NipCaCrl.from_dict(await self._get_json(f"{self._prefix}/v1/crl"))
+
+    async def get_certificates(
+        self,
+        bearer_token: str | None = None,
+    ) -> NipCaCertificateList:
+        data = await self._send_json(
+            "GET",
+            f"{self._prefix}/v1/certificates",
+            None,
+            bearer_token)
+        return NipCaCertificateList.from_dict(data)
+
+    @staticmethod
+    def verify_crl_signature(crl: NipCaCrl, ca_public_key: str) -> bool:
+        return NipIdentity.verify_signature(
+            ca_public_key, crl.unsigned_dict(), crl.signature)
 
     async def register_agent(self, request: NipCaRegisterRequest, bearer_token: str | None = None) -> NipCaIdentFrame:
         data = await self._send_json("POST", f"{self._prefix}/v1/agents/register", request.to_dict(), bearer_token)

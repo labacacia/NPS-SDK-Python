@@ -29,6 +29,10 @@ NDP_GRAPH_TOO_LARGE    = "NDP-GRAPH-TOO-LARGE"
 
 # ── Federation (alpha.11+) ────────────────────────────────────────────────────
 NDP_FEDERATION_LOOP    = "NDP-FEDERATION-LOOP"
+NDP_CLUSTER_SPLIT      = "NDP-CLUSTER-SPLIT"
+
+# ── Multi-Anchor HA (NPS-CR-0009) ─────────────────────────────────────────────
+NDP_CLUSTER_SPLIT      = "NDP-CLUSTER-SPLIT"
 
 # ── Registry / Auth ───────────────────────────────────────────────────────────
 NDP_ISSUER_NOT_ALLOWED   = "NDP-ISSUER-NOT-ALLOWED"
@@ -65,6 +69,7 @@ NDP_ERROR_TO_NPS_STATUS: dict[str, str] = {
     NDP_GRAPH_INVALID:                NPS_CLIENT_BAD_FRAME,
     NDP_GRAPH_TOO_LARGE:              NPS_LIMIT_PAYLOAD,
     NDP_FEDERATION_LOOP:              NPS_CLIENT_CONFLICT,
+    NDP_CLUSTER_SPLIT:                NPS_CLIENT_CONFLICT,
     NDP_ISSUER_NOT_ALLOWED:           NPS_AUTH_FORBIDDEN,
     NDP_CA_ATTEST_REQUIRED:           NPS_AUTH_UNAUTHENTICATED,
     NDP_REGISTRY_UNAVAILABLE:         NPS_SERVER_UNAVAILABLE,

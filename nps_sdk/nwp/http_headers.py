@@ -32,5 +32,7 @@ BAN_EXPIRES = "X-NWP-Ban-Expires"
 
 # ── MIME types ──────────────────────────────────────────────────────────────────
 MIME_FRAME = "application/nwp-frame"
+MIME_LEGACY_FRAME = "application/x-nps-frame"
 MIME_CAPSULE = "application/nwp-capsule"
+MIME_ERROR = "application/nwp-error+json"
 MIME_MANIFEST = "application/nwp-manifest+json"

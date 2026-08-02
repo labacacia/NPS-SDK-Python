@@ -23,6 +23,7 @@ import pytest
 
 from nps_sdk.nip import error_codes
 from nps_sdk.nip.assurance_level import AssuranceLevel
+from nps_sdk.nip.ca_client import NipCaClient, NipCaClientError
 from nps_sdk.nip.identity import NipIdentity
 from nps_sdk.nip.verifier import (
     NipIdentVerifier,
@@ -570,6 +571,29 @@ class TestRouter:
                 json={"identifier": "a", "pub_key": agent.pub_key_string},
             )
             assert r2.status_code == 201
+
+    async def test_certificate_list_client_and_signed_crl(self, keys):
+        ca_id, agent = keys
+        opts = _opts(operator_api_key="secret")
+        ca = _service(ca_id, opts)
+        app = NipCaRouterApp(opts, ca)
+        frame = await ca.register(
+            "agent", "audit-a", agent.pub_key_string, [], '{"nodes":["*"]}')
+        await ca.revoke(frame.nid, "key_compromise")
+        async with _router_client(app) as http:
+            client = NipCaClient("http://ca", http_client=http)
+            with pytest.raises(NipCaClientError) as exc:
+                await client.get_certificates()
+            assert exc.value.status_code == 401
+
+            certificates = await client.get_certificates("secret")
+            assert len(certificates.entries) == 1
+            assert certificates.entries[0].nid == frame.nid
+            assert certificates.entries[0].scope == {"nodes": ["*"]}
+
+            crl = await client.get_crl()
+            assert NipCaClient.verify_crl_signature(
+                crl, ca.get_ca_public_key())
 
     async def test_register_x509_endpoint(self, keys):
         ca_id, agent = keys

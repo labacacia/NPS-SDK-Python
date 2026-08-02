@@ -361,6 +361,11 @@ class NcpHandshakeCapsFrame(NpsFrame):
     caps:                tuple[str, ...]
     negotiated_encoding: str | None            = None
     enabled_encodings:   tuple[str, ...] | None = None
+    session_version:     str | None             = None
+    supported_protocols: tuple[str, ...] | None = None
+    max_frame_payload:   int | None             = None
+    ext_support:         bool | None            = None
+    max_concurrent_streams: int | None          = None
     anchor_ref:          str | None            = None
     payload:             Any                    = None
 
@@ -381,6 +386,16 @@ class NcpHandshakeCapsFrame(NpsFrame):
             d["negotiated_encoding"] = self.negotiated_encoding
         if self.enabled_encodings is not None:
             d["enabled_encodings"] = list(self.enabled_encodings)
+        if self.session_version is not None:
+            d["session_version"] = self.session_version
+        if self.supported_protocols is not None:
+            d["supported_protocols"] = list(self.supported_protocols)
+        if self.max_frame_payload is not None:
+            d["max_frame_payload"] = self.max_frame_payload
+        if self.ext_support is not None:
+            d["ext_support"] = self.ext_support
+        if self.max_concurrent_streams is not None:
+            d["max_concurrent_streams"] = self.max_concurrent_streams
         if self.anchor_ref is not None:
             d["anchor_ref"] = self.anchor_ref
         if self.payload is not None:
@@ -398,6 +413,15 @@ class NcpHandshakeCapsFrame(NpsFrame):
                 if data.get("enabled_encodings") is not None
                 else None
             ),
+            session_version=data.get("session_version"),
+            supported_protocols=(
+                tuple(data["supported_protocols"])
+                if data.get("supported_protocols") is not None
+                else None
+            ),
+            max_frame_payload=data.get("max_frame_payload"),
+            ext_support=data.get("ext_support"),
+            max_concurrent_streams=data.get("max_concurrent_streams"),
             anchor_ref=data.get("anchor_ref"),
             payload=data.get("payload"),
         )

@@ -15,6 +15,7 @@ from nps_sdk.ndp.error_codes import (
     NDP_ANNOUNCE_SIGNATURE_INVALID,
 )
 from nps_sdk.ndp.frames import AnnounceFrame
+from nps_sdk.ndp.registry_profile import verify_announce_signature
 from nps_sdk.nip.identity import NipIdentity
 
 
@@ -96,7 +97,10 @@ class NdpAnnounceValidator:
             )
 
         payload = frame.unsigned_dict()
-        if not NipIdentity.verify_signature(pub_key, payload, frame.signature):
+        if not (
+            verify_announce_signature(frame.to_dict(), pub_key, frame.signature)
+            or NipIdentity.verify_signature(pub_key, payload, frame.signature)
+        ):
             return NdpAnnounceResult.fail(
                 NDP_ANNOUNCE_SIGNATURE_INVALID,
                 f"Ed25519 signature verification failed for NID '{frame.nid}'.",

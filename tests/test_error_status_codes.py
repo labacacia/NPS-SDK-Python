@@ -181,6 +181,7 @@ from nps_sdk.ncp.error_codes import (
     NCP_ENC_AUTH_FAILED,
     NCP_VERSION_INCOMPATIBLE,
     NCP_PREAMBLE_INVALID,
+    NCP_NID_MISMATCH,
     NCP_ERROR_TO_NPS_STATUS,
 )
 
@@ -237,6 +238,10 @@ class TestNcpErrorCodeValues:
     def test_preamble_invalid(self):
         assert NCP_PREAMBLE_INVALID == "NCP-PREAMBLE-INVALID"
 
+    def test_nid_mismatch(self):
+        # RFC-0006 §6.3–§6.4; NPS-CR-0009 §3.3 reuses it as the failover trigger.
+        assert NCP_NID_MISMATCH == "NCP-NID-MISMATCH"
+
 
 class TestNcpMappingDict:
     _EXPECTED_CODES = {
@@ -247,6 +252,7 @@ class TestNcpMappingDict:
         "NCP-ENCODING-UNSUPPORTED", "NCP-DIFF-FORMAT-UNSUPPORTED",
         "NCP-ENC-NOT-NEGOTIATED", "NCP-ENC-AUTH-FAILED",
         "NCP-VERSION-INCOMPATIBLE", "NCP-PREAMBLE-INVALID",
+        "NCP-NID-MISMATCH",
     }
 
     def test_all_codes_covered(self):
@@ -254,13 +260,17 @@ class TestNcpMappingDict:
         assert not missing, f"NCP_ERROR_TO_NPS_STATUS missing: {missing}"
 
     def test_mapping_count(self):
-        assert len(NCP_ERROR_TO_NPS_STATUS) == 17
+        # 17 through alpha.16; +1 for NCP-NID-MISMATCH, which spec/error-codes.md has
+        # carried since RFC-0006 but the Python SDK had never declared. NPS-CR-0009's
+        # failover connector matches on it, so it is now a first-class constant.
+        assert len(NCP_ERROR_TO_NPS_STATUS) == 18
 
     def test_spot_checks(self):
         assert NCP_ERROR_TO_NPS_STATUS[NCP_ANCHOR_NOT_FOUND] == "NPS-CLIENT-NOT-FOUND"
         assert NCP_ERROR_TO_NPS_STATUS[NCP_FRAME_PAYLOAD_TOO_LARGE] == "NPS-LIMIT-PAYLOAD"
         assert NCP_ERROR_TO_NPS_STATUS[NCP_VERSION_INCOMPATIBLE] == "NPS-PROTO-VERSION-INCOMPATIBLE"
         assert NCP_ERROR_TO_NPS_STATUS[NCP_PREAMBLE_INVALID] == "NPS-PROTO-PREAMBLE-INVALID"
+        assert NCP_ERROR_TO_NPS_STATUS[NCP_NID_MISMATCH] == "NPS-AUTH-UNAUTHENTICATED"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -360,6 +370,13 @@ class TestNwpMappingDict:
         "NWP-TOPOLOGY-UNAUTHORIZED", "NWP-TOPOLOGY-UNSUPPORTED-SCOPE",
         "NWP-TOPOLOGY-DEPTH-UNSUPPORTED", "NWP-TOPOLOGY-FILTER-UNSUPPORTED",
         "NWP-RESERVED-TYPE-UNSUPPORTED",
+        # NPS-CR-0009 multi-Anchor HA
+        "NWP-ANCHOR-NOT-LEADER", "NWP-ANCHOR-EPOCH-FENCED",
+        # NPS-CR-0001 outbound / NPS-CR-0010 inbound Bridge
+        "NWP-BRIDGE-DIRECTION-UNSUPPORTED", "NWP-BRIDGE-TARGET-INVALID",
+        "NWP-BRIDGE-PROTOCOL-UNSUPPORTED", "NWP-BRIDGE-ENDPOINT-INVALID",
+        "NWP-BRIDGE-UPSTREAM-FAILED", "NWP-BRIDGE-SERVER-TOOL-NOT-FOUND",
+        "NWP-BRIDGE-SERVER-DISPATCHER-MISSING", "NWP-BRIDGE-SERVER-DISPATCH-FAILED",
     }
 
     def test_all_codes_covered(self):
@@ -398,6 +415,8 @@ from nps_sdk.nip.error_codes import (
     CERT_EKU_MISSING,
     CERT_SUBJECT_NID_MISMATCH,
     CERT_PARENT_REVOKED,
+    CERT_NODE_ROLES_MISMATCH,
+    CERT_CAPABILITIES_EXCEEDED,
     CA_NID_NOT_FOUND,
     CA_NID_ALREADY_EXISTS,
     CA_SERIAL_DUPLICATE,
@@ -436,6 +455,12 @@ class TestNipNewCodes:
 
     def test_cert_parent_revoked(self):
         assert CERT_PARENT_REVOKED == "NIP-CERT-PARENT-REVOKED"
+
+    def test_cert_node_roles_mismatch(self):
+        assert CERT_NODE_ROLES_MISMATCH == "NIP-CERT-NODE-ROLES-MISMATCH"
+
+    def test_cert_capabilities_exceeded(self):
+        assert CERT_CAPABILITIES_EXCEEDED == "NIP-CERT-CAPABILITIES-EXCEEDED"
 
     def test_ocsp_staple_expired(self):
         assert OCSP_STAPLE_EXPIRED == "NIP-OCSP-STAPLE-EXPIRED"
@@ -503,6 +528,8 @@ class TestNipMappingDict:
         "NIP-REPUTATION-ENTRY-INVALID", "NIP-REPUTATION-LOG-UNREACHABLE",
         "NIP-REPUTATION-GOSSIP-FORK", "NIP-REPUTATION-GOSSIP-SIG-INVALID",
         "NIP-ACME-CHALLENGE-FAILED",
+        # NIP v0.12 §7.5 Phase-3 enforcement
+        "NIP-CERT-NODE-ROLES-MISMATCH", "NIP-CERT-CAPABILITIES-EXCEEDED",
     }
 
     def test_all_codes_covered(self):
@@ -541,6 +568,7 @@ from nps_sdk.ndp.error_codes import (
     NDP_GRAPH_INVALID,
     NDP_GRAPH_TOO_LARGE,
     NDP_FEDERATION_LOOP,
+    NDP_CLUSTER_SPLIT,
     NDP_ISSUER_NOT_ALLOWED,
     NDP_CA_ATTEST_REQUIRED,
     NDP_REGISTRY_UNAVAILABLE,
@@ -597,6 +625,9 @@ class TestNdpErrorCodeValues:
     def test_federation_loop(self):
         assert NDP_FEDERATION_LOOP == "NDP-FEDERATION-LOOP"
 
+    def test_cluster_split(self):
+        assert NDP_CLUSTER_SPLIT == "NDP-CLUSTER-SPLIT"
+
     def test_issuer_not_allowed(self):
         assert NDP_ISSUER_NOT_ALLOWED == "NDP-ISSUER-NOT-ALLOWED"
 
@@ -617,6 +648,8 @@ class TestNdpMappingDict:
         "NDP-GRAPH-SEQ-ROLLBACK", "NDP-GRAPH-SEQ-GAP",
         "NDP-GRAPH-INVALID", "NDP-GRAPH-TOO-LARGE", "NDP-FEDERATION-LOOP",
         "NDP-ISSUER-NOT-ALLOWED", "NDP-CA-ATTEST-REQUIRED", "NDP-REGISTRY-UNAVAILABLE",
+        # NPS-CR-0009 multi-Anchor HA
+        "NDP-CLUSTER-SPLIT",
     }
 
     def test_all_codes_covered(self):
@@ -662,8 +695,17 @@ from nps_sdk.nop.error_codes import (
     NOP_CONDITION_EVAL_ERROR,
     NOP_INPUT_MAPPING_ERROR,
     NOP_COMPENSATION_FAILED,
+    NOP_COMPENSATION_PARTIAL_FAILED,
     NOP_COMPENSATION_NOT_SUPPORTED,
     NOP_CALLBACK_HMAC_MISSING,
+    NOP_CALLBACK_INVALID,
+    NOP_CALLBACK_HMAC_INVALID,
+    NOP_CLAIM_CONFLICT,
+    NOP_SPAWN_SPEC_INVALID,
+    NOP_RUNTIME_IDLE_TIMEOUT,
+    NOP_RUNTIME_MAX_RUNTIME,
+    NOP_TASK_RESULT_EXPIRED,
+    NOP_STREAM_NAK_UNRESOLVABLE,
     NOP_ERROR_TO_NPS_STATUS,
 )
 
@@ -747,8 +789,12 @@ class TestNopMappingDict:
         "NOP-STREAM-SEQ-GAP", "NOP-STREAM-NID-MISMATCH", "NOP-STREAM-NAK",
         "NOP-RESOURCE-INSUFFICIENT",
         "NOP-CONDITION-EVAL-ERROR", "NOP-INPUT-MAPPING-ERROR",
-        "NOP-COMPENSATION-FAILED", "NOP-COMPENSATION-NOT-SUPPORTED",
-        "NOP-CALLBACK-HMAC-MISSING",
+        "NOP-COMPENSATION-FAILED", "NOP-COMPENSATION-PARTIAL-FAILED",
+        "NOP-COMPENSATION-NOT-SUPPORTED", "NOP-CALLBACK-HMAC-MISSING",
+        "NOP-CALLBACK-INVALID", "NOP-CALLBACK-HMAC-INVALID",
+        "NOP-CLAIM-CONFLICT", "NOP-SPAWN-SPEC-INVALID",
+        "NOP-RUNTIME-IDLE-TIMEOUT", "NOP-RUNTIME-MAX-RUNTIME",
+        "NOP-TASK-RESULT-EXPIRED", "NOP-STREAM-NAK-UNRESOLVABLE",
     }
 
     def test_all_codes_covered(self):
@@ -764,3 +810,12 @@ class TestNopMappingDict:
         assert NOP_ERROR_TO_NPS_STATUS[NOP_DELEGATE_SCOPE_VIOLATION] == "NPS-AUTH-FORBIDDEN"
         assert NOP_ERROR_TO_NPS_STATUS[NOP_STREAM_SEQ_GAP] == "NPS-STREAM-SEQ-GAP"
         assert NOP_ERROR_TO_NPS_STATUS[NOP_STREAM_NID_MISMATCH] == "NPS-AUTH-UNAUTHENTICATED"
+        assert NOP_ERROR_TO_NPS_STATUS[NOP_COMPENSATION_PARTIAL_FAILED] == "NPS-CLIENT-UNPROCESSABLE"
+        assert NOP_ERROR_TO_NPS_STATUS[NOP_CALLBACK_INVALID] == "NPS-CLIENT-BAD-PARAM"
+        assert NOP_ERROR_TO_NPS_STATUS[NOP_CALLBACK_HMAC_INVALID] == "NPS-AUTH-UNAUTHENTICATED"
+        assert NOP_ERROR_TO_NPS_STATUS[NOP_CLAIM_CONFLICT] == "NPS-CLIENT-CONFLICT"
+        assert NOP_ERROR_TO_NPS_STATUS[NOP_SPAWN_SPEC_INVALID] == "NPS-CLIENT-BAD-PARAM"
+        assert NOP_ERROR_TO_NPS_STATUS[NOP_RUNTIME_IDLE_TIMEOUT] == "NPS-SERVER-TIMEOUT"
+        assert NOP_ERROR_TO_NPS_STATUS[NOP_RUNTIME_MAX_RUNTIME] == "NPS-SERVER-TIMEOUT"
+        assert NOP_ERROR_TO_NPS_STATUS[NOP_TASK_RESULT_EXPIRED] == "NPS-CLIENT-NOT-FOUND"
+        assert NOP_ERROR_TO_NPS_STATUS[NOP_STREAM_NAK_UNRESOLVABLE] == "NPS-STREAM-SEQ-GAP"

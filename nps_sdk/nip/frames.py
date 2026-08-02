@@ -89,26 +89,15 @@ class IdentMetadata:
         )
 
 
-# ── IdentLineage (NPS-CR-0003 §5.1.3) ─────────────────────────────────────────
+# ── IdentLineage (NPS-CR-0003 §5.1.3) ────────────────────────────────────────
 
 class IdentLineageRole:
-    """Wire values for :attr:`IdentLineage.role` (NPS-CR-0003 §5.1.3)."""
-
     GROUP = "group"
     SESSION = "session"
 
 
 @dataclasses.dataclass(frozen=True)
 class IdentLineage:
-    """Signed lineage object carried in an IdentFrame for orchestrator groups
-    and short-lived session NIDs (NPS-CR-0003 §5.1.3).
-
-    All sub-fields are part of the frame's signed canonical JSON. Absent fields
-    are omitted from the canonical form (sorted alphabetically per NPS-3 §5.1),
-    so a group frame and a session frame stay bit-compatible with the .NET
-    reference's snake_case serializer.
-    """
-
     role: str
     parent_nid: str | None = None
     group_nid: str | None = None
@@ -119,18 +108,12 @@ class IdentLineage:
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"role": self.role}
-        if self.parent_nid is not None:
-            d["parent_nid"] = self.parent_nid
-        if self.group_nid is not None:
-            d["group_nid"] = self.group_nid
-        if self.session_id is not None:
-            d["session_id"] = self.session_id
-        if self.purpose is not None:
-            d["purpose"] = self.purpose
-        if self.owner_user_id is not None:
-            d["owner_user_id"] = self.owner_user_id
-        if self.owner_key_id is not None:
-            d["owner_key_id"] = self.owner_key_id
+        if self.parent_nid is not None: d["parent_nid"] = self.parent_nid
+        if self.group_nid is not None: d["group_nid"] = self.group_nid
+        if self.session_id is not None: d["session_id"] = self.session_id
+        if self.purpose is not None: d["purpose"] = self.purpose
+        if self.owner_user_id is not None: d["owner_user_id"] = self.owner_user_id
+        if self.owner_key_id is not None: d["owner_key_id"] = self.owner_key_id
         return d
 
     @classmethod
@@ -170,9 +153,6 @@ class IdentFrame(NpsFrame):
     # NPS-RFC-0003 §5.1.1 — Agent identity assurance level (optional).
     assurance_level: AssuranceLevel | None = None
 
-    # NPS-CR-0003 §5.1.3 — Signed lineage for group / session NIDs (optional).
-    lineage: IdentLineage | None = None
-
     # NPS-RFC-0002 §4.5 — Optional dual-trust X.509 chain (Phase 1 backward compatible).
     # `cert_format`: "v1-proprietary" (default when None) | "v2-x509".
     # `cert_chain`:  base64url-encoded DER, ordered [leaf, intermediates..., root].
@@ -181,6 +161,12 @@ class IdentFrame(NpsFrame):
 
     # NIP v0.9 §5.1 — Optional OCSP staple (base64url DER-encoded OCSP response).
     ocsp_staple:  str | None = None
+
+    # NIP v0.12 §7.5 — Node roles claimed by this identity. Checked as a SUBSET of the
+    # CA-attested `id-nps-node-roles` X.509 extension under Phase-3 enforcement.
+    # Wire-only: excluded from the v1 signed payload, like cert_format / cert_chain.
+    node_roles:   tuple[str, ...] | None = None
+    lineage:      IdentLineage | None = None
 
     @property
     def frame_type(self) -> FrameType:
@@ -207,14 +193,16 @@ class IdentFrame(NpsFrame):
             d["metadata"] = self.metadata.to_dict()
         if self.assurance_level is not None:
             d["assurance_level"] = self.assurance_level.wire
-        if self.lineage is not None:
-            d["lineage"] = self.lineage.to_dict()
         if self.cert_format is not None:
             d["cert_format"] = self.cert_format
         if self.cert_chain is not None:
             d["cert_chain"] = list(self.cert_chain)
         if self.ocsp_staple is not None:
             d["ocsp_staple"] = self.ocsp_staple
+        if self.node_roles is not None:
+            d["node_roles"] = list(self.node_roles)
+        if self.lineage is not None:
+            d["lineage"] = self.lineage.to_dict()
         return d
 
     @classmethod
@@ -228,8 +216,8 @@ class IdentFrame(NpsFrame):
             level = AssuranceLevel.from_wire(lvl_raw)
         chain_raw = data.get("cert_chain")
         chain = tuple(chain_raw) if isinstance(chain_raw, list) else None
+        roles_raw = data.get("node_roles")
         lineage_raw = data.get("lineage")
-        lineage = IdentLineage.from_dict(lineage_raw) if isinstance(lineage_raw, dict) else None
         return cls(
             nid=data["nid"],
             pub_key=data["pub_key"],
@@ -242,10 +230,11 @@ class IdentFrame(NpsFrame):
             signature=data["signature"],
             metadata=meta,
             assurance_level=level,
-            lineage=lineage,
             cert_format=data.get("cert_format"),
             cert_chain=chain,
             ocsp_staple=data.get("ocsp_staple"),
+            node_roles=tuple(roles_raw) if isinstance(roles_raw, list) else None,
+            lineage=IdentLineage.from_dict(lineage_raw) if isinstance(lineage_raw, dict) else None,
         )
 
     def unsigned_dict(self) -> dict[str, Any]:
@@ -255,18 +244,15 @@ class IdentFrame(NpsFrame):
         Per NPS-RFC-0002 §8.1, the v1 Ed25519 signature deliberately does NOT cover
         cert_format / cert_chain — those are dual-trust additions, validated by the
         X.509 chain check (Step 3b) instead. v1 verifiers continue to ignore them.
-
-        ``metadata`` and ``ocsp_staple`` are likewise excluded: metadata is
-        runtime-mutable (NPS-3 §5.1) and the OCSP staple is a transport artifact,
-        so neither is part of the CA's signed canonical payload. ``assurance_level``
-        and ``lineage`` ARE signed (NPS-RFC-0003 §5.1.1 / NPS-CR-0003 §5.1.3).
+        ``node_roles`` (NIP v0.12 §7.5) is excluded for the same reason: it is
+        cross-checked against the CA-attested certificate extension, not the v1
+        signature, and including it would break every previously-signed IdentFrame.
         """
         d = self.to_dict()
         d.pop("signature", None)
         d.pop("cert_format", None)
         d.pop("cert_chain", None)
-        d.pop("metadata", None)
-        d.pop("ocsp_staple", None)
+        d.pop("node_roles", None)
         return d
 
 

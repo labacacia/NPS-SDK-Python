@@ -165,8 +165,9 @@ class DefaultReputationEvaluator(IReputationEvaluator):
 
         if entries is None:
             if policy.on_log_unavailable.lower() == "deny":
+                timestamp = datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
                 entries = [{"incident": "*", "severity": "critical",
-                             "timestamp": datetime.datetime.utcnow().isoformat() + "Z"}]
+                             "timestamp": timestamp}]
             else:
                 entries = []
 
@@ -195,7 +196,10 @@ def default_reputation_evaluator() -> IReputationEvaluator:
 def _rule_matches(rule: ReputationRule, entries: list[dict[str, Any]]) -> bool:
     cutoff: datetime.datetime | None = None
     if rule.within_days is not None:
-        cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=rule.within_days)
+        cutoff = (
+            datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            - datetime.timedelta(days=rule.within_days)
+        )
 
     op, threshold = _parse_sev(rule.severity)
     needed = max(rule.count, 1)

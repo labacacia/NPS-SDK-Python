@@ -16,15 +16,18 @@ import asyncio
 import dataclasses
 
 from nps_sdk.core.codec import NpsFrameCodec
-from nps_sdk.core.exceptions import (
-    NpsEncodingUnsupportedError,
-    NpsFrameError,
-)
+from nps_sdk.core.exceptions import NpsFrameError
 from nps_sdk.core.frames import EncodingTier, FrameType
 from nps_sdk.core.registry import FrameRegistry
 from nps_sdk.ncp import preamble
 from nps_sdk.ncp.encoding_policy import NcpEncodingPolicy
 from nps_sdk.ncp.frames import ErrorFrame, HelloFrame, NcpHandshakeCapsFrame
+from nps_sdk.ncp.handshake_profile import (
+    NcpHandshakeAction,
+    NcpHandshakeProfile,
+    evaluate_hello_header,
+    negotiate_handshake,
+)
 from nps_sdk.ncp.server_options import NcpServerOptions
 from nps_sdk.ncp.session import NcpSession, read_frame_header
 
@@ -46,22 +49,44 @@ class NcpServerConnection:
         writer: asyncio.StreamWriter,
         codec: NpsFrameCodec,
         client_hello: HelloFrame,
+        profile: NcpHandshakeProfile,
     ) -> None:
         self._reader = reader
         self._writer = writer
         self._codec = codec
         self.client_hello = client_hello
+        self._profile = profile
 
     async def accept(self, server_caps: NcpHandshakeCapsFrame) -> NcpSession:
         """
         Send *server_caps* to the client and return a live :class:`NcpSession`.
         The encoding policy is negotiated from the client's supported encodings.
         """
-        policy = self._negotiate_encoding_policy(self.client_hello)
+        negotiation = negotiate_handshake(self._profile, self.client_hello)
+        if negotiation.action != NcpHandshakeAction.ACCEPT:
+            error = negotiation.error or "NCP-VERSION-INCOMPATIBLE"
+            await self.reject(ErrorFrame(
+                status=negotiation.status or "NPS-PROTO-VERSION-INCOMPATIBLE",
+                error=error,
+                message="Native NCP handshake negotiation failed."))
+            raise NpsFrameError(
+                f"Native NCP handshake negotiation failed: {error}")
+        default_tier = (
+            EncodingTier.MSGPACK
+            if negotiation.negotiated_encoding == "msgpack"
+            else EncodingTier.JSON)
+        policy = NcpEncodingPolicy(
+            default_tier,
+            "binary_vector.v1" in (negotiation.enabled_encodings or ()))
         caps = dataclasses.replace(
             server_caps,
-            negotiated_encoding=NcpEncodingPolicy.encoding_token(policy.default_tier),
-            enabled_encodings=policy.enabled_encodings,
+            session_version=negotiation.session_version,
+            negotiated_encoding=negotiation.negotiated_encoding,
+            enabled_encodings=negotiation.enabled_encodings,
+            supported_protocols=negotiation.supported_protocols,
+            max_frame_payload=negotiation.max_frame_payload,
+            ext_support=negotiation.ext_support,
+            max_concurrent_streams=negotiation.max_concurrent_streams,
         )
         wire = self._codec.encode(caps, override_tier=policy.default_tier)
         self._writer.write(wire)
@@ -83,20 +108,6 @@ class NcpServerConnection:
             await self._writer.wait_closed()
         except (ConnectionError, OSError):
             pass
-
-    @staticmethod
-    def _negotiate_encoding_policy(hello: HelloFrame) -> NcpEncodingPolicy:
-        binary_vector_enabled = "binary_vector.v1" in hello.supported_encodings
-        for enc in hello.supported_encodings:
-            if enc == "msgpack":
-                return NcpEncodingPolicy(EncodingTier.MSGPACK, binary_vector_enabled)
-            if enc == "json":
-                return NcpEncodingPolicy(EncodingTier.JSON, binary_vector_enabled)
-        raise NpsEncodingUnsupportedError(
-            "Client did not offer a supported stable default encoding "
-            "(expected msgpack or json)."
-        )
-
 
 class NcpServer:
     """NCP native-mode TCP server over asyncio."""
@@ -152,11 +163,7 @@ class NcpServer:
     ) -> None:
         try:
             reader, writer = await self._authenticate(reader, writer)
-            timeout = self._options.handshake_read_timeout
-            conn = await asyncio.wait_for(
-                self._handshake(reader, writer),
-                timeout=timeout if timeout and timeout > 0 else None,
-            )
+            conn = await self._handshake(reader, writer)
             await self._pending.put(conn)
         except Exception:
             writer.close()
@@ -171,28 +178,35 @@ class NcpServer:
         writer: asyncio.StreamWriter,
     ) -> NcpServerConnection:
         # 1 — read & validate preamble
-        preamble_buf = await reader.readexactly(preamble.LENGTH)
+        preamble_timeout = self._options.handshake_read_timeout
+        preamble_buf = await asyncio.wait_for(
+            reader.readexactly(preamble.LENGTH),
+            timeout=preamble_timeout if preamble_timeout > 0 else None)
         preamble.validate(preamble_buf)  # raises NcpPreambleInvalidError on mismatch
 
-        # 2 — read frame header
-        header, raw = await read_frame_header(reader)
-        if header.frame_type != FrameType.HELLO:
-            raise NpsFrameError(
-                f"Expected HelloFrame (0x{int(FrameType.HELLO):02X}) as first "
-                f"frame after preamble, got 0x{int(header.frame_type):02X}."
-            )
-        if header.payload_length > self._options.max_hello_payload:
-            raise NpsFrameError(
-                f"HelloFrame payload length {header.payload_length} exceeds "
-                f"configured maximum {self._options.max_hello_payload} bytes."
-            )
+        async def read_hello():
+            header, raw = await read_frame_header(reader)
+            decision = evaluate_hello_header(
+                header, 0, 0, self._options.max_hello_payload)
+            if decision.action == NcpHandshakeAction.SILENT_CLOSE:
+                raise NpsFrameError("Invalid native NCP Hello header.")
+            payload = await reader.readexactly(header.payload_length)
+            return header, raw, payload
 
-        # 3 — read payload and deserialise HelloFrame
-        payload = await reader.readexactly(header.payload_length)
+        hello_timeout = self._options.hello_read_timeout
+        header, raw, payload = await asyncio.wait_for(
+            read_hello(),
+            timeout=hello_timeout if hello_timeout > 0 else None)
+        # 3 — deserialise HelloFrame
         hello_codec = NpsFrameCodec(_hello_registry())
         hello = hello_codec.decode(raw + payload)
         assert isinstance(hello, HelloFrame)
-        return NcpServerConnection(reader, writer, self._codec, hello)
+        return NcpServerConnection(
+            reader,
+            writer,
+            self._codec,
+            hello,
+            self._options.handshake_profile)
 
     async def _authenticate(
         self,

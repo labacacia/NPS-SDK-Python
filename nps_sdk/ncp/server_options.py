@@ -14,6 +14,7 @@ import asyncio
 
 from nps_sdk.core.frames import DEFAULT_MAX_PAYLOAD
 from nps_sdk.ncp import preamble
+from nps_sdk.ncp.handshake_profile import NcpHandshakeProfile
 
 #: Hook signature: given the accepted (reader, writer), return a possibly-wrapped
 #: (reader, writer) pair — e.g. after a TLS upgrade. Async.
@@ -39,6 +40,12 @@ class NcpServerOptions:
     #: non-extended frame payload ceiling (65 535 bytes).
     max_hello_payload: int = DEFAULT_MAX_PAYLOAD
 
-    #: Wall-clock budget for the preamble, frame header, and Hello payload read.
-    #: Defaults to the NCP preamble read timeout.
+    #: Wall-clock budget for the preamble read.
     handshake_read_timeout: float = preamble.READ_TIMEOUT
+
+    #: Separate wall-clock budget for the Hello header and payload.
+    hello_read_timeout: float = 5.0
+
+    #: Server capabilities used for deterministic negotiation.
+    handshake_profile: NcpHandshakeProfile = dataclasses.field(
+        default_factory=NcpHandshakeProfile)

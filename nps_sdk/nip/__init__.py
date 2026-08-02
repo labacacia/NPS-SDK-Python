@@ -13,9 +13,17 @@ from nps_sdk.nip.frames import (
     TrustFrame,
 )
 from nps_sdk.nip.identity import NipIdentity
+from nps_sdk.nip.phase3 import NipPhase3Enforcer
+from nps_sdk.nip.verifier import (
+    NipIdentVerifier,
+    NipIdentVerifyResult,
+    NipVerifierOptions,
+)
 from nps_sdk.nip.ca_client import (
     NipCaClient,
     NipCaClientError,
+    NipCaCertificateList,
+    NipCaCertificateRecord,
     NipCaCrl,
     NipCaCrlEntry,
     NipCaDiscoveryDocument,
@@ -36,6 +44,13 @@ from nps_sdk.nip.verifier import (
     NipVerifierOptions,
     NipVerifyContext,
     nwp_path_matches,
+)
+from nps_sdk.nip.revocation_policy import (
+    NipRevocationDecision,
+    NipRevocationEvaluation,
+    NipRevocationMode,
+    NipRevocationOutcome,
+    NipRevocationSource,
 )
 from nps_sdk.nip.trust_validator import (
     TrustFrameValidationContext,
@@ -89,8 +104,14 @@ __all__ = [
     "RevokeFrame",
     "TrustFrame",
     "NipIdentity",
+    "NipPhase3Enforcer",
+    "NipIdentVerifier",
+    "NipIdentVerifyResult",
+    "NipVerifierOptions",
     "NipCaClient",
     "NipCaClientError",
+    "NipCaCertificateList",
+    "NipCaCertificateRecord",
     "NipCaCrl",
     "NipCaCrlEntry",
     "NipCaDiscoveryDocument",
@@ -109,6 +130,11 @@ __all__ = [
     "NipVerifierOptions",
     "NipVerifyContext",
     "nwp_path_matches",
+    "NipRevocationDecision",
+    "NipRevocationEvaluation",
+    "NipRevocationMode",
+    "NipRevocationOutcome",
+    "NipRevocationSource",
     "TrustFrameValidationContext",
     "TrustFrameValidator",
     "IncidentType",

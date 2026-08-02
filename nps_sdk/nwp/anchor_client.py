@@ -69,15 +69,21 @@ class TopologySnapshot:
     cluster_size: int
     members:      list[MemberInfo]
     truncated:    bool | None = None
+    # NPS-CR-0009 §1.4 / NPS-2 §12.2 — epoch under which the responding Anchor owns the
+    # cluster. Wire key ``cluster_epoch``; absent means 1; not signed. Every
+    # topology.snapshot / topology.stream response MUST carry the current value.
+    cluster_epoch: int | None = None
 
     @classmethod
     def _from_dict(cls, d: dict[str, Any]) -> "TopologySnapshot":
+        epoch = d.get("cluster_epoch")
         return cls(
             version      = int(d["version"]),
             anchor_nid   = d["anchor_nid"],
             cluster_size = int(d["cluster_size"]),
             members      = [MemberInfo._from_dict(m) for m in d.get("members") or []],
             truncated    = d.get("truncated"),
+            cluster_epoch = int(epoch) if epoch is not None else None,
         )
 
 
@@ -150,8 +156,59 @@ class MemberUpdated(TopologyEvent):
 
 @dataclass
 class AnchorState(TopologyEvent):
+    """``anchor_state`` topology event.
+
+    ``field`` is the sub-type tag on the wire and ``details`` its payload object.
+    The sub-type tag constants live here rather than on :class:`TopologyWire`,
+    mirroring the reference implementation — they are part of this event's own
+    contract, not the shared topology vocabulary.
+    """
+
+    #: Pre-existing sub-type: the Anchor rebased its topology version counter.
+    FIELD_VERSION_REBASED = "version_rebased"
+    #: NPS-CR-0009 §1.2: cluster ownership moved to ``successor_nid`` at a new epoch.
+    FIELD_ANCHOR_FAILOVER = "anchor_failover"
+    #: NPS-CR-0009 §1.3: the Anchor lost quorum and is read-only degraded.
+    FIELD_ANCHOR_QUORUM_LOST = "anchor_quorum_lost"
+
+    #: Reason enum for :meth:`failover`.
+    REASON_PLANNED = "planned"
+    REASON_ACTIVE_LOST = "active_lost"
+
     field:   str      = ""
     details: Any | None = None
+
+    @staticmethod
+    def failover(
+        successor_nid: str,
+        cluster_epoch: int,
+        reason: str = REASON_PLANNED,
+        version: int = 0,
+    ) -> "AnchorState":
+        """Build an ``anchor_failover`` event (NPS-CR-0009 §1.2).
+
+        :param successor_nid: the Anchor that took ownership.
+        :param cluster_epoch: the new, strictly-greater epoch.
+        :param reason: ``"planned"`` (default) or ``"active_lost"``.
+        """
+        return AnchorState(
+            version=version,
+            field=AnchorState.FIELD_ANCHOR_FAILOVER,
+            details={
+                "successor_nid": successor_nid,
+                "cluster_epoch": cluster_epoch,
+                "reason": reason,
+            },
+        )
+
+    @staticmethod
+    def quorum_lost(quorum_size: int, available: int, version: int = 0) -> "AnchorState":
+        """Build an ``anchor_quorum_lost`` event (NPS-CR-0009 §1.3)."""
+        return AnchorState(
+            version=version,
+            field=AnchorState.FIELD_ANCHOR_QUORUM_LOST,
+            details={"quorum_size": quorum_size, "available": available},
+        )
 
 
 @dataclass

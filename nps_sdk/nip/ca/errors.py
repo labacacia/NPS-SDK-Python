@@ -22,6 +22,10 @@ class NipCaException(Exception):
         self.message = message
         self.error_code = error_code
 
+    @property
+    def errorCode(self) -> str:
+        return self.error_code
+
 
 class _CaErrorCodes:
     """Attribute-style alias of the NIP error-code wire constants used by the CA.

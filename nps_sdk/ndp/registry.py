@@ -14,13 +14,14 @@ import threading
 import time
 from typing import TYPE_CHECKING, Callable
 
+from nps_sdk.ndp.cluster import NdpClusterResolutionMixin
 from nps_sdk.ndp.frames import AnnounceFrame, NdpResolveResult
 
 if TYPE_CHECKING:
     from nps_sdk.ndp.dns_txt import DnsTxtLookup
 
 
-class InMemoryNdpRegistry:
+class InMemoryNdpRegistry(NdpClusterResolutionMixin):
     """
     Thread-safe, TTL-aware in-memory registry for NDP announcements (NPS-4 §6).
 

@@ -23,6 +23,10 @@ from nps_sdk.nop.frames import (
     TaskFrame,
 )
 from nps_sdk.nop.client import NopClient, NopTaskStatus
+from nps_sdk.nop.cluster_delegation import (
+    ClusterAnchorInfo,
+    ClusterDelegationResolver,
+)
 from nps_sdk.nop import error_codes
 from nps_sdk.nop.error_codes import NOP_ERROR_TO_NPS_STATUS
 
@@ -51,6 +55,11 @@ from nps_sdk.nop.orchestrator import (
     NopOrchestratorOptions,
 )
 from nps_sdk.nop import instrumentation
+from nps_sdk.nop.portable_profile import (
+    compute_dedup_key,
+    evaluate_orchestration,
+    evaluate_runtime,
+)
 
 __all__ = [
     # models
@@ -73,6 +82,9 @@ __all__ = [
     # client
     "NopClient",
     "NopTaskStatus",
+    # cluster delegation (NPS-CR-0009)
+    "ClusterAnchorInfo",
+    "ClusterDelegationResolver",
     # error codes
     "error_codes",
     "NOP_ERROR_TO_NPS_STATUS",
@@ -109,6 +121,10 @@ __all__ = [
     "INopOrchestrator",
     "NopOrchestrator",
     "NopOrchestratorOptions",
+    # NOP 0.9 portable conformance profile
+    "compute_dedup_key",
+    "evaluate_orchestration",
+    "evaluate_runtime",
     # telemetry / instrumentation ([I] band)
     "instrumentation",
 ]
