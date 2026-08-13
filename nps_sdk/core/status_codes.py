@@ -26,6 +26,7 @@ NPS_AUTH_FORBIDDEN       = "NPS-AUTH-FORBIDDEN"
 NPS_LIMIT_RATE    = "NPS-LIMIT-RATE"
 NPS_LIMIT_BUDGET  = "NPS-LIMIT-BUDGET"
 NPS_LIMIT_PAYLOAD = "NPS-LIMIT-PAYLOAD"
+NPS_LIMIT_RESOURCE = "NPS-LIMIT-RESOURCE"
 
 # ── Server Errors (SERVER) ───────────────────────────────────────────────────
 NPS_SERVER_INTERNAL              = "NPS-SERVER-INTERNAL"
@@ -63,6 +64,7 @@ NPS_STATUS_TO_HTTP: dict[str, int] = {
     NPS_LIMIT_RATE:                    429,
     NPS_LIMIT_BUDGET:                  429,
     NPS_LIMIT_PAYLOAD:                 413,
+    NPS_LIMIT_RESOURCE:                429,
     NPS_SERVER_INTERNAL:               500,
     NPS_SERVER_UNSUPPORTED:            501,
     NPS_SERVER_UNAVAILABLE:            503,

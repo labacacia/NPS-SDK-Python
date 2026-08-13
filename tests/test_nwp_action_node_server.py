@@ -265,7 +265,7 @@ class TestReservedTaskActions:
 
     async def test_cancel_pending_task(self) -> None:
         store = InMemoryActionTaskStore()
-        store.create("t1", "orders.batch", None, None)
+        store.create("t1", "orders.batch", None, "urn:nps:agent:tester")
         app = ActionNodeApp(_opts(), _EchoProvider(), task_store=store)
         async with _client(app) as http:
             resp = await http.post(f"{PREFIX}/invoke",
@@ -277,7 +277,7 @@ class TestReservedTaskActions:
 
     async def test_cancel_terminal_task_409(self) -> None:
         store = InMemoryActionTaskStore()
-        store.create("t2", "orders.batch", None, None)
+        store.create("t2", "orders.batch", None, "urn:nps:agent:tester")
         store.complete("t2", {"done": True})
         app = ActionNodeApp(_opts(), _EchoProvider(), task_store=store)
         async with _client(app) as http:

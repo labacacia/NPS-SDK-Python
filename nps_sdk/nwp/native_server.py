@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import inspect
 from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
@@ -101,10 +102,11 @@ class NwpNativeNodeServer:
 
     async def _dispatch_query(self, frame: QueryFrame) -> CapsFrame:
         if self._query_handler is not None:
-            return _coerce_query_result(await _maybe_await(self._query_handler(frame)), self._anchor_ref)
+            response = _coerce_query_result(await _maybe_await(self._query_handler(frame)), self._anchor_ref)
+            return _with_request_id(response, frame.request_id)
         if self._memory_provider is not None and self._memory_options is not None:
             result = await self._memory_provider.query(frame, self._memory_options)
-            return _coerce_query_result(result, self._anchor_ref)
+            return _with_request_id(_coerce_query_result(result, self._anchor_ref), frame.request_id)
         raise RuntimeError("No native NWP query handler or memory provider configured.")
 
     async def _dispatch_action(self, frame: ActionFrame) -> NpsFrame:
@@ -112,10 +114,12 @@ class NwpNativeNodeServer:
             raise RuntimeError("No native NWP action handler configured.")
         result = await _maybe_await(self._action_handler(frame))
         if isinstance(result, NpsFrame):
+            if isinstance(result, CapsFrame):
+                return _with_request_id(result, frame.request_id)
             return result
         if result is None:
-            return CapsFrame(anchor_ref=self._anchor_ref, count=0, data=())
-        return CapsFrame(anchor_ref=self._anchor_ref, count=1, data=(result,))
+            return CapsFrame(anchor_ref=self._anchor_ref, count=0, data=(), request_id=frame.request_id)
+        return CapsFrame(anchor_ref=self._anchor_ref, count=1, data=(result,), request_id=frame.request_id)
 
 
 async def _maybe_await(value: Any) -> Any:
@@ -143,6 +147,10 @@ def _coerce_query_result(result: CapsFrame | MemoryNodeQueryResult | Sequence[An
         token_est=_estimate_tokens(result),
         tokenizer_used="native-estimate",
     )
+
+
+def _with_request_id(frame: CapsFrame, request_id: str | None) -> CapsFrame:
+    return frame if request_id is None else dataclasses.replace(frame, request_id=request_id)
 
 
 def _estimate_tokens(rows: Sequence[Any]) -> int:

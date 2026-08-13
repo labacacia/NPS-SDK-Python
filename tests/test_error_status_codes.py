@@ -121,14 +121,14 @@ class TestStatusCodeValues:
 
 
 class TestStatusCodeCount:
-    """All 25 spec codes must be in NPS_STATUS_TO_HTTP."""
+    """All 26 spec codes must be in NPS_STATUS_TO_HTTP."""
 
     _EXPECTED = {
         "NPS-OK", "NPS-OK-ACCEPTED", "NPS-OK-NO-CONTENT",
         "NPS-CLIENT-BAD-FRAME", "NPS-CLIENT-BAD-PARAM", "NPS-CLIENT-NOT-FOUND",
         "NPS-CLIENT-CONFLICT", "NPS-CLIENT-GONE", "NPS-CLIENT-UNPROCESSABLE",
         "NPS-AUTH-UNAUTHENTICATED", "NPS-AUTH-FORBIDDEN",
-        "NPS-LIMIT-RATE", "NPS-LIMIT-BUDGET", "NPS-LIMIT-PAYLOAD",
+        "NPS-LIMIT-RATE", "NPS-LIMIT-BUDGET", "NPS-LIMIT-PAYLOAD", "NPS-LIMIT-RESOURCE",
         "NPS-SERVER-INTERNAL", "NPS-SERVER-UNSUPPORTED", "NPS-SERVER-UNAVAILABLE",
         "NPS-SERVER-TIMEOUT", "NPS-SERVER-ENCODING-UNSUPPORTED",
         "NPS-DOWNSTREAM-UNAVAILABLE",
@@ -141,7 +141,7 @@ class TestStatusCodeCount:
         assert not missing, f"Missing from NPS_STATUS_TO_HTTP: {missing}"
 
     def test_http_map_count(self):
-        assert len(NPS_STATUS_TO_HTTP) == 25
+        assert len(NPS_STATUS_TO_HTTP) == 26
 
     def test_http_values_are_ints(self):
         for code, http in NPS_STATUS_TO_HTTP.items():

@@ -28,12 +28,13 @@ async def test_dispatch_wire_returns_caps_frame_for_query() -> None:
     codec = NpsFrameCodec(FrameRegistry.create_full())
     server = NwpNativeNodeServer(query_handler=lambda _: [{"id": 42}], codec=codec)
 
-    out = await server.dispatch_wire(codec.encode(QueryFrame(anchor_ref="sha256:a"), override_tier=EncodingTier.MSGPACK))
+    out = await server.dispatch_wire(codec.encode(QueryFrame(anchor_ref="sha256:a", request_id="req-query-1"), override_tier=EncodingTier.MSGPACK))
     frame = codec.decode(out)
 
     assert isinstance(frame, CapsFrame)
     assert frame.count == 1
     assert frame.data[0]["id"] == 42
+    assert frame.request_id == "req-query-1"
 
 
 @pytest.mark.asyncio
@@ -43,7 +44,7 @@ async def test_serve_once_reads_and_writes_one_frame() -> None:
     reader = asyncio.StreamReader()
     writer = FakeWriter()
 
-    reader.feed_data(codec.encode(ActionFrame("ping"), override_tier=EncodingTier.MSGPACK))
+    reader.feed_data(codec.encode(ActionFrame("ping", request_id="req-action-1"), override_tier=EncodingTier.MSGPACK))
     reader.feed_eof()
 
     assert await server.serve_once(reader, writer)
@@ -51,6 +52,7 @@ async def test_serve_once_reads_and_writes_one_frame() -> None:
 
     assert isinstance(frame, CapsFrame)
     assert frame.data[0]["action"] == "ping"
+    assert frame.request_id == "req-action-1"
 
 
 @pytest.mark.asyncio

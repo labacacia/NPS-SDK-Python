@@ -288,6 +288,7 @@ class ActionFrame(NpsFrame):
     idempotency_key: str | None  = None
     timeout_ms:      int         = 5000
     async_:          bool        = False
+    request_id:      str | None  = None
 
     @property
     def frame_type(self) -> FrameType:
@@ -306,6 +307,7 @@ class ActionFrame(NpsFrame):
         }
         if self.params          is not None: d["params"]          = self.params
         if self.idempotency_key is not None: d["idempotency_key"] = self.idempotency_key
+        if self.request_id      is not None: d["request_id"]      = self.request_id
         return d
 
     @classmethod
@@ -319,6 +321,7 @@ class ActionFrame(NpsFrame):
             idempotency_key=data.get("idempotency_key"),
             timeout_ms=int(data.get("timeout_ms", 5000)),
             async_=bool(data.get("async", False)),
+            request_id=data.get("request_id"),
         )
 
 

@@ -158,12 +158,14 @@ class TestActionFrame:
             idempotency_key="idem-abc-123",
             timeout_ms=30_000,
             async_=True,
+            request_id="req-action-1",
         )
         out = codec.decode(codec.encode(frame))
         assert isinstance(out, ActionFrame)
         assert out.idempotency_key == "idem-abc-123"
         assert out.timeout_ms      == 30_000
         assert out.async_          is True
+        assert out.request_id      == "req-action-1"
 
     def test_frame_type(self):
         assert ActionFrame(action_id="x").frame_type == FrameType.ACTION

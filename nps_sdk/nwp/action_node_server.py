@@ -90,6 +90,7 @@ class ActionNodeOptions:
     task_retention_seconds: float = 3600
     reject_private_callback_urls: bool = True
     default_token_budget: int = 0
+    profiles: dict[str, Any] | None = None
 
 
 # ── Execution context / result / provider ──────────────────────────────────────
@@ -136,6 +137,9 @@ class ActionExecutionError(Exception):
 
 class IActionNodeProvider(abc.ABC):
     """Host-supplied executor. All declared ``action_id`` values MUST be handled."""
+
+    async def authorize(self, frame: ActionFrame, context: ActionContext) -> None:
+        """Authorize before idempotency lookup so cached replay cannot bypass policy."""
 
     @abc.abstractmethod
     async def execute(self, frame: ActionFrame, context: ActionContext) -> ActionExecutionResult: ...
@@ -420,6 +424,7 @@ class ActionNodeApp:
         self._clock = clock or (lambda: _dt.datetime.now(_dt.timezone.utc))
         self._tasks = task_store or InMemoryActionTaskStore(self._clock)
         self._idem = idempotency_cache or InMemoryIdempotencyCache(self._clock)
+        self._background_tasks: dict[str, asyncio.Task[None]] = {}
         self._prefix = options.path_prefix.rstrip("/")
         self._nwm_json = _json_bytes(self._build_manifest())
         self._actions_json = _json_bytes(
@@ -478,10 +483,10 @@ class ActionNodeApp:
         request_id = raw.get("request_id")
 
         if frame.action_id == SYSTEM_TASK_STATUS:
-            await self._handle_task_status(send, frame, request_id)
+            await self._handle_task_status(send, frame, request_id, headers)
             return
         if frame.action_id == SYSTEM_TASK_CANCEL:
-            await self._handle_task_cancel(send, frame, request_id)
+            await self._handle_task_cancel(send, frame, request_id, headers)
             return
 
         spec = self._opt.actions.get(frame.action_id)
@@ -513,9 +518,28 @@ class ActionNodeApp:
                                        error_codes.ACTION_PARAMS_INVALID, err)
                 return
 
+        agent_nid = headers.get(http_headers.AGENT.lower())
+        eff_priority = priority or "normal"
+        ctx = ActionContext(
+            agent_nid=agent_nid, request_id=request_id, spec=spec,
+            timeout_ms=effective_timeout, priority=eff_priority, task_id=None,
+        )
+        try:
+            await self._provider.authorize(frame, ctx)
+        except ActionExecutionError as ex:
+            await self._send_error(send, ex.http_status, ex.nps_status,
+                                   ex.error_code, ex.message, details=ex.details)
+            return
+        except Exception:  # noqa: BLE001
+            await self._send_error(send, 500, "NPS-SERVER-INTERNAL",
+                                   error_codes.NODE_UNAVAILABLE,
+                                   "action authorization failed.")
+            return
+
+        cache_action_id = self._scoped_cache_action_id(frame.action_id, agent_nid)
         params_hash = _hash_params(frame.params)
         if frame.idempotency_key is not None:
-            cached = self._idem.get(frame.action_id, frame.idempotency_key)
+            cached = self._idem.get(cache_action_id, frame.idempotency_key)
             if cached is not None:
                 if cached.params_hash != params_hash:
                     await self._send_error(send, 409, "NPS-CLIENT-CONFLICT",
@@ -530,14 +554,11 @@ class ActionNodeApp:
                 await self._send_caps(send, cached.result, cached.anchor_ref, request_id)
                 return
 
-        agent_nid = headers.get(http_headers.AGENT.lower())
-        eff_priority = priority or "normal"
-
         if frame.async_:
             task_id = secrets.token_hex(16)
             self._tasks.create(task_id, frame.action_id, request_id, agent_nid)
             if frame.idempotency_key is not None:
-                self._idem.try_store(frame.action_id, frame.idempotency_key, IdempotentEntry(
+                self._idem.try_store(cache_action_id, frame.idempotency_key, IdempotentEntry(
                     action_id=frame.action_id, params_hash=params_hash, task_id=task_id,
                     expires_at=self._clock() + _dt.timedelta(seconds=self._opt.idempotency_ttl_seconds),
                 ))
@@ -545,15 +566,12 @@ class ActionNodeApp:
                 agent_nid=agent_nid, request_id=request_id, spec=spec,
                 timeout_ms=effective_timeout, priority=eff_priority, task_id=task_id,
             )
-            asyncio.create_task(self._run_async_task(frame, ctx, effective_timeout))
+            task = asyncio.create_task(self._run_async_task(frame, ctx, effective_timeout))
+            self._background_tasks[task_id] = task
             await self._send_async(send, task_id, "pending", request_id, spec.timeout_ms_default)
             return
 
         # Synchronous path.
-        ctx = ActionContext(
-            agent_nid=agent_nid, request_id=request_id, spec=spec,
-            timeout_ms=effective_timeout, priority=eff_priority, task_id=None,
-        )
         try:
             result = await asyncio.wait_for(
                 self._provider.execute(frame, ctx), timeout=effective_timeout / 1000.0)
@@ -572,7 +590,7 @@ class ActionNodeApp:
 
         anchor_ref = result.anchor_ref or spec.result_anchor
         if frame.idempotency_key is not None:
-            self._idem.try_store(frame.action_id, frame.idempotency_key, IdempotentEntry(
+            self._idem.try_store(cache_action_id, frame.idempotency_key, IdempotentEntry(
                 action_id=frame.action_id, params_hash=params_hash,
                 result=result.result, anchor_ref=anchor_ref,
                 expires_at=self._clock() + _dt.timedelta(seconds=self._opt.idempotency_ttl_seconds),
@@ -589,16 +607,23 @@ class ActionNodeApp:
         except asyncio.TimeoutError:
             self._tasks.fail(ctx.task_id, {"code": error_codes.NODE_UNAVAILABLE,
                                            "message": "task timed out"})
+        except asyncio.CancelledError:
+            if self._tasks.get(ctx.task_id).status != "cancelled":
+                self._tasks.fail(ctx.task_id, {"code": error_codes.NODE_UNAVAILABLE,
+                                               "message": "task cancelled"})
         except ActionExecutionError as ex:
             self._tasks.fail(ctx.task_id, {"code": ex.error_code, "message": ex.message})
         except Exception as ex:  # noqa: BLE001
             self._tasks.fail(ctx.task_id, {"code": error_codes.NODE_UNAVAILABLE,
                                            "message": str(ex)})
+        finally:
+            self._background_tasks.pop(ctx.task_id, None)
 
     # ── system.task.status / system.task.cancel ──────────────────────────────────
 
     async def _handle_task_status(self, send: Callable, frame: ActionFrame,
-                                  request_id: str | None) -> None:
+                                  request_id: str | None,
+                                  headers: dict[str, str]) -> None:
         task_id = self._read_string_param(frame.params, "task_id")
         if not task_id:
             await self._send_error(send, 400, "NPS-CLIENT-BAD-REQUEST",
@@ -608,6 +633,11 @@ class ActionNodeApp:
         if rec is None:
             await self._send_error(send, 404, "NPS-CLIENT-NOT-FOUND",
                                    error_codes.TASK_NOT_FOUND, f"Unknown task_id '{task_id}'.")
+            return
+        if not self._owns_task(headers, rec):
+            await self._send_error(send, 403, "NPS-AUTH-FORBIDDEN",
+                                   error_codes.AUTH_NID_SCOPE_VIOLATION,
+                                   "The caller does not own this task.")
             return
         status: dict[str, Any] = {
             "task_id": rec.task_id,
@@ -622,7 +652,8 @@ class ActionNodeApp:
         await self._send_caps(send, status, None, request_id)
 
     async def _handle_task_cancel(self, send: Callable, frame: ActionFrame,
-                                  request_id: str | None) -> None:
+                                  request_id: str | None,
+                                  headers: dict[str, str]) -> None:
         task_id = self._read_string_param(frame.params, "task_id")
         if not task_id:
             await self._send_error(send, 400, "NPS-CLIENT-BAD-REQUEST",
@@ -633,12 +664,20 @@ class ActionNodeApp:
             await self._send_error(send, 404, "NPS-CLIENT-NOT-FOUND",
                                    error_codes.TASK_NOT_FOUND, f"Unknown task_id '{task_id}'.")
             return
+        if not self._owns_task(headers, rec):
+            await self._send_error(send, 403, "NPS-AUTH-FORBIDDEN",
+                                   error_codes.AUTH_NID_SCOPE_VIOLATION,
+                                   "The caller does not own this task.")
+            return
         if rec.status in _TERMINAL_STATES:
             await self._send_error(send, 409, "NPS-CLIENT-CONFLICT",
                                    error_codes.TASK_ALREADY_CANCELLED,
                                    f"Task '{task_id}' is already in a terminal state ('{rec.status}').")
             return
         self._tasks.cancel(task_id)
+        task = self._background_tasks.get(task_id)
+        if task is not None:
+            task.cancel()
         await self._send_caps(send, {"task_id": task_id, "status": "cancelled"}, None, request_id)
 
     # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -656,6 +695,13 @@ class ActionNodeApp:
         if requested <= 0:
             return spec.timeout_ms_default or self._opt.default_timeout_ms
         return min(requested, hard_max)
+
+    def _scoped_cache_action_id(self, action_id: str, agent_nid: str | None) -> str:
+        return f"{self._opt.node_id}\x1f{action_id}\x1f{agent_nid or ''}"
+
+    @staticmethod
+    def _owns_task(headers: dict[str, str], task: ActionTaskRecord) -> bool:
+        return task.agent_nid == headers.get(http_headers.AGENT.lower())
 
     # ── Response writers ─────────────────────────────────────────────────────────
 
@@ -727,4 +773,6 @@ class ActionNodeApp:
             "identity_type": "nip-cert" if opt.require_auth else "none",
         }
         m["endpoints"] = {"invoke": f"{base}/invoke", "schema": f"{base}/.schema"}
+        if opt.profiles is not None:
+            m["profiles"] = opt.profiles
         return m

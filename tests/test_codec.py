@@ -168,6 +168,7 @@ class TestCapsFrameCodec:
             token_est=150,
             cached=True,
             tokenizer_used="cl100k_base",
+            request_id="req-caps-1",
         )
         out = codec.decode(codec.encode(frame))
         assert isinstance(out, CapsFrame)
@@ -176,6 +177,7 @@ class TestCapsFrameCodec:
         assert out.token_est      == 150
         assert out.cached         is True
         assert out.tokenizer_used == "cl100k_base"
+        assert out.request_id     == "req-caps-1"
 
     def test_minimal_caps(self, codec: NpsFrameCodec):
         frame = CapsFrame(anchor_ref="sha256:" + "f" * 64, count=0, data=())

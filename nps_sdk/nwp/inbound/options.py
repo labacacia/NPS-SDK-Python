@@ -55,7 +55,7 @@ class BridgeInboundOptions:
     node_id: str = "nps-bridge-server"
     #: Server name returned by MCP ``initialize`` and the A2A AgentCard.
     server_name: str = "nps-bridge-server"
-    server_version: str = "1.0.0-alpha.17"
+    server_version: str = "1.0.0-alpha.18"
     description: str | None = "NPS Bridge Node inbound surface."
     #: Role of the co-hosted node projected by the in-process backend. Action is the only
     #: shape the pre-CR-0010 Bridge server supported; set COMPLEX/MEMORY together with

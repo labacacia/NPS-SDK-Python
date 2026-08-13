@@ -244,6 +244,7 @@ class CapsFrame(NpsFrame):
     token_est:      int | None = None
     cached:         bool | None = None
     tokenizer_used: str | None = None
+    request_id:     str | None = None
 
     @property
     def frame_type(self) -> FrameType:
@@ -263,6 +264,7 @@ class CapsFrame(NpsFrame):
         if self.token_est      is not None: d["token_est"]      = self.token_est
         if self.cached         is not None: d["cached"]         = self.cached
         if self.tokenizer_used is not None: d["tokenizer_used"] = self.tokenizer_used
+        if self.request_id     is not None: d["request_id"]     = self.request_id
         return d
 
     @classmethod
@@ -275,6 +277,7 @@ class CapsFrame(NpsFrame):
             token_est=data.get("token_est"),
             cached=data.get("cached"),
             tokenizer_used=data.get("tokenizer_used"),
+            request_id=data.get("request_id"),
         )
 
 
