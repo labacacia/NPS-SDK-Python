@@ -28,12 +28,13 @@ import datetime as _dt
 import hashlib
 import json
 import secrets
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from ipaddress import AddressValueError, IPv4Address, IPv6Address
 from typing import Any
 from urllib.parse import urlsplit
 
 from nps_sdk.nwp import error_codes, http_headers
+from nps_sdk.ncp.frames import StreamFrame
 from nps_sdk.nwp.frames import ActionFrame
 
 # Reserved action ids (NPS-2 §7.3).
@@ -105,6 +106,7 @@ class ActionContext:
     timeout_ms: int
     priority: str = "normal"
     task_id: str | None = None
+    wire_input_bytes: int = 0
 
 
 @dataclasses.dataclass(frozen=True)
@@ -112,6 +114,7 @@ class ActionExecutionResult:
     """Result of a single action execution."""
 
     result: Any = None
+    stream_frames: AsyncIterator[StreamFrame] | None = None
     anchor_ref: str | None = None
     token_est: int = 0
 
@@ -271,6 +274,7 @@ class IdempotentEntry:
     params_hash: str
     expires_at: _dt.datetime
     result: Any = None
+    stream_frames: tuple[StreamFrame, ...] | None = None
     anchor_ref: str | None = None
     task_id: str | None = None
 
@@ -470,7 +474,8 @@ class ActionNodeApp:
 
     async def _handle_invoke(self, receive: Callable, send: Callable, headers: dict[str, str]) -> None:
         try:
-            raw = json.loads(await _read_body(receive) or b"{}")
+            raw_body = await _read_body(receive)
+            raw = json.loads(raw_body or b"{}")
             frame = ActionFrame.from_dict(raw)
         except (json.JSONDecodeError, ValueError, KeyError) as ex:
             await self._send_error(send, 400, "NPS-CLIENT-BAD-REQUEST",
@@ -523,6 +528,7 @@ class ActionNodeApp:
         ctx = ActionContext(
             agent_nid=agent_nid, request_id=request_id, spec=spec,
             timeout_ms=effective_timeout, priority=eff_priority, task_id=None,
+            wire_input_bytes=len(raw_body),
         )
         try:
             await self._provider.authorize(frame, ctx)
@@ -551,6 +557,11 @@ class ActionNodeApp:
                     status = rec.status if rec is not None else "pending"
                     await self._send_async(send, cached.task_id, status, request_id, None)
                     return
+                if cached.stream_frames is not None:
+                    await self._send_stream(
+                        send, _as_async_frames(cached.stream_frames), request_id
+                    )
+                    return
                 await self._send_caps(send, cached.result, cached.anchor_ref, request_id)
                 return
 
@@ -565,6 +576,7 @@ class ActionNodeApp:
             ctx = ActionContext(
                 agent_nid=agent_nid, request_id=request_id, spec=spec,
                 timeout_ms=effective_timeout, priority=eff_priority, task_id=task_id,
+                wire_input_bytes=len(raw_body),
             )
             task = asyncio.create_task(self._run_async_task(frame, ctx, effective_timeout))
             self._background_tasks[task_id] = task
@@ -589,6 +601,16 @@ class ActionNodeApp:
             return
 
         anchor_ref = result.anchor_ref or spec.result_anchor
+        if result.stream_frames is not None:
+            completed = await self._send_stream(send, result.stream_frames, request_id)
+            if completed is not None and frame.idempotency_key is not None:
+                self._idem.try_store(cache_action_id, frame.idempotency_key, IdempotentEntry(
+                    action_id=frame.action_id, params_hash=params_hash,
+                    stream_frames=completed, anchor_ref=anchor_ref,
+                    expires_at=self._clock() + _dt.timedelta(
+                        seconds=self._opt.idempotency_ttl_seconds),
+                ))
+            return
         if frame.idempotency_key is not None:
             self._idem.try_store(cache_action_id, frame.idempotency_key, IdempotentEntry(
                 action_id=frame.action_id, params_hash=params_hash,
@@ -739,6 +761,70 @@ class ActionNodeApp:
             extra[http_headers.REQUEST_ID] = request_id
         await self._send(send, 200, _json_bytes(caps), http_headers.MIME_CAPSULE, extra)
 
+    async def _send_stream(
+        self,
+        send: Callable,
+        source: AsyncIterator[StreamFrame],
+        request_id: str | None,
+    ) -> tuple[StreamFrame, ...] | None:
+        headers = [(b"content-type", b"application/x-ndjson"),
+                   (http_headers.NODE_TYPE.lower().encode("latin-1"), b"action")]
+        if request_id is not None:
+            headers.append((http_headers.REQUEST_ID.lower().encode("latin-1"),
+                            request_id.encode("latin-1")))
+        await send({"type": "http.response.start", "status": 200, "headers": headers})
+
+        stream_id = secrets.token_hex(16)
+        emitted: list[StreamFrame] = []
+        next_seq = 0
+        terminal = False
+        try:
+            async for supplied in source:
+                if terminal:
+                    raise ActionExecutionError(
+                        500, "NPS-SERVER-INTERNAL", error_codes.NODE_UNAVAILABLE,
+                        "action stream emitted frames after its terminal frame")
+                if supplied.seq != next_seq:
+                    raise ActionExecutionError(
+                        500, "NPS-SERVER-INTERNAL", error_codes.NODE_UNAVAILABLE,
+                        f"action stream sequence expected {next_seq}, got {supplied.seq}")
+                if supplied.error_code is not None and not supplied.is_last:
+                    raise ActionExecutionError(
+                        500, "NPS-SERVER-INTERNAL", error_codes.NODE_UNAVAILABLE,
+                        "action stream error_code is terminal-only")
+                frame = dataclasses.replace(supplied, stream_id=stream_id)
+                emitted.append(frame)
+                await send({"type": "http.response.body",
+                            "body": _json_bytes(frame.to_dict()) + b"\n",
+                            "more_body": True})
+                next_seq += 1
+                terminal = frame.is_last
+            if not terminal:
+                raise ActionExecutionError(
+                    500, "NPS-SERVER-INTERNAL", error_codes.NODE_UNAVAILABLE,
+                    "action stream ended without a terminal frame")
+            await send({"type": "http.response.body", "body": b"", "more_body": False})
+            return tuple(emitted) if emitted[-1].error_code is None else None
+        except asyncio.CancelledError:
+            raise
+        except Exception as ex:  # noqa: BLE001
+            error_code = (ex.error_code if isinstance(ex, ActionExecutionError)
+                          else error_codes.NODE_UNAVAILABLE)
+            if not terminal:
+                failure = StreamFrame(
+                    stream_id=stream_id, seq=next_seq, is_last=True,
+                    error_code=error_code, data=(),
+                )
+                await send({"type": "http.response.body",
+                            "body": _json_bytes(failure.to_dict()) + b"\n",
+                            "more_body": True})
+            await send({"type": "http.response.body", "body": b"", "more_body": False})
+            return None
+        finally:
+            close = getattr(source, "aclose", None)
+            if close is not None:
+                await close()
+
     async def _send_async(self, send: Callable, task_id: str, status: str,
                           request_id: str | None, estimated_ms: int | None) -> None:
         body: dict[str, Any] = {
@@ -767,7 +853,12 @@ class ActionNodeApp:
             m["display_name"] = opt.display_name
         m["wire_formats"] = ["ncp-capsule", "json"]
         m["preferred_format"] = "json"
-        m["capabilities"] = {"query": False, "stream": False, "token_budget_hint": True}
+        supports_stream = bool(
+            (opt.profiles or {}).get("llm", {}).get("supports_stream", False)
+        )
+        m["capabilities"] = {
+            "query": False, "stream": supports_stream, "token_budget_hint": True
+        }
         m["auth"] = {
             "required": opt.require_auth,
             "identity_type": "nip-cert" if opt.require_auth else "none",
@@ -776,3 +867,8 @@ class ActionNodeApp:
         if opt.profiles is not None:
             m["profiles"] = opt.profiles
         return m
+
+
+async def _as_async_frames(frames: tuple[StreamFrame, ...]) -> AsyncIterator[StreamFrame]:
+    for frame in frames:
+        yield frame

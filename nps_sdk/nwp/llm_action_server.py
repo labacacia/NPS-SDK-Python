@@ -8,16 +8,18 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import inspect
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from enum import Enum
 from typing import Any
 
 from nps_sdk.core.status_codes import (
+    NPS_AUTH_FORBIDDEN,
     NPS_AUTH_UNAUTHENTICATED,
     NPS_SERVER_INTERNAL,
     to_http_status,
 )
 from nps_sdk.nwp import error_codes
+from nps_sdk.ncp.frames import StreamFrame
 from nps_sdk.nwp.action_node_server import (
     ActionContext,
     ActionExecutionError,
@@ -38,6 +40,8 @@ from nps_sdk.nwp.frames import ActionFrame
 from nps_sdk.nwp.llm import (
     CAPABILITY_LLM_COMPLETE,
     CAPABILITY_LLM_CONTEXT,
+    CAPABILITY_LLM_STREAM,
+    CAPABILITY_LLM_TOOL_CALL,
     LLM_COMPLETE,
     LLM_COMPLETE_RESPONSE_ANCHOR,
     LLM_CONTEXT_RELEASE,
@@ -46,6 +50,7 @@ from nps_sdk.nwp.llm import (
     LLM_CONTEXT_STATUS_RESPONSE_ANCHOR,
     LlmCompleteActionRequest,
     LlmCompleteActionResponse,
+    LlmCompleteStreamChunkDto,
     LlmContextOperation,
     LlmContextReleaseRequestDto,
     LlmContextStatusRequestDto,
@@ -64,7 +69,7 @@ class LlmAuthorizationStage(str, Enum):
 
 
 LlmContextAuthorizer = Callable[
-    [LlmContextOwner, str, LlmAuthorizationStage, ActionContext],
+    [LlmContextOwner, str, LlmAuthorizationStage, tuple[str, ...], ActionContext],
     None | Awaitable[None],
 ]
 
@@ -78,8 +83,10 @@ class StatefulLlmActionOptions:
     provider_name: str | None = None
     default_model: str | None = None
     supports_tools: bool = False
+    supports_stream: bool = False
     supports_json_mode: bool = False
     reasoning_visibility: str | None = None
+    # Must verify every supplied capability; stateful requests fail closed when absent.
     authorizer: LlmContextAuthorizer | None = None
 
     def __post_init__(self) -> None:
@@ -132,7 +139,7 @@ class StatefulLlmActionProvider(IActionNodeProvider):
         profile: dict[str, Any] = {
             "profile_version": "0.2",
             "actions": [LLM_COMPLETE, LLM_CONTEXT_STATUS, LLM_CONTEXT_RELEASE],
-            "supports_stream": False,
+            "supports_stream": self._options.supports_stream,
             "supports_tools": self._options.supports_tools,
             "supports_json_mode": self._options.supports_json_mode,
             "context": {
@@ -158,9 +165,20 @@ class StatefulLlmActionProvider(IActionNodeProvider):
             requires_context_auth = frame.params.get("context") is not None
         if not requires_context_auth:
             return
+        if frame.action_id == LLM_COMPLETE and frame.async_:
+            try:
+                request = LlmCompleteActionRequest.from_action_frame(frame)
+            except (KeyError, TypeError, ValueError) as ex:
+                raise _params_error(str(ex)) from ex
+            if request.stream:
+                raise _params_error("stream=true cannot be combined with async=true")
         owner = self._owner(context)
         await self._check_authorization(
-            owner, frame.action_id, LlmAuthorizationStage.ADMISSION, context
+            owner,
+            frame.action_id,
+            LlmAuthorizationStage.ADMISSION,
+            _required_capabilities(frame),
+            context,
         )
 
     async def execute(
@@ -187,10 +205,12 @@ class StatefulLlmActionProvider(IActionNodeProvider):
             raise _params_error("this node does not advertise LLM tool-definition support")
         if request.context is None:
             return await self._inner.execute(frame, context)
-        if request.stream:
+        if request.stream and not self._options.supports_stream:
             raise _params_error(
-                "the Action Server context coordinator supports unary/async completion, not streaming"
+                "this node does not advertise LLM streaming support"
             )
+        if request.stream and frame.async_:
+            raise _params_error("stream=true cannot be combined with async=true")
         if request.context.operation in (
             LlmContextOperation.APPEND,
             LlmContextOperation.FORK,
@@ -231,6 +251,20 @@ class StatefulLlmActionProvider(IActionNodeProvider):
             self._abort(reservation, error_codes.NODE_UNAVAILABLE)
             raise
 
+        if request.stream:
+            if result.stream_frames is None:
+                self._abort(reservation, error_codes.NODE_UNAVAILABLE)
+                raise _internal_error(
+                    "stateful streaming llm.complete returned no StreamFrame sequence"
+                )
+            return ActionExecutionResult(
+                stream_frames=self._coordinate_stream(
+                    result.stream_frames, reservation, owner, frame, context
+                ),
+                anchor_ref=result.anchor_ref or "nps:system:llm.complete:stream",
+                token_est=result.token_est,
+            )
+
         task = asyncio.current_task()
         if task is not None and task.cancelling():
             self._abort(reservation, error_codes.NODE_UNAVAILABLE)
@@ -252,7 +286,11 @@ class StatefulLlmActionProvider(IActionNodeProvider):
 
         try:
             await self._check_authorization(
-                owner, frame.action_id, LlmAuthorizationStage.COMMIT, context
+                owner,
+                frame.action_id,
+                LlmAuthorizationStage.COMMIT,
+                _required_capabilities(frame),
+                context,
             )
         except asyncio.CancelledError:
             self._abort(reservation, error_codes.NODE_UNAVAILABLE)
@@ -274,6 +312,127 @@ class StatefulLlmActionProvider(IActionNodeProvider):
         except LlmContextStoreError as ex:
             raise _store_error(ex) from ex
         return _completion_result(dataclasses.replace(response, context=receipt), result)
+
+    async def _coordinate_stream(
+        self,
+        source: AsyncIterator[StreamFrame],
+        reservation: LlmContextMutationReservation,
+        owner: LlmContextOwner,
+        request_frame: ActionFrame,
+        action_context: ActionContext,
+    ) -> AsyncIterator[StreamFrame]:
+        content: list[str] = []
+        tool_calls = []
+        resolved = False
+        try:
+            async for frame in source:
+                try:
+                    chunks = tuple(
+                        LlmCompleteStreamChunkDto.from_dict(item) for item in frame.data
+                    )
+                except (KeyError, TypeError, ValueError) as ex:
+                    raise _internal_error(
+                        f"stateful llm.complete returned an invalid stream payload: {ex}"
+                    ) from ex
+
+                if not frame.is_last and any(
+                    chunk.stop_reason is not None
+                    or chunk.error is not None
+                    or chunk.usage is not None
+                    or chunk.context is not None
+                    for chunk in chunks
+                ):
+                    raise _internal_error(
+                        "LLM stream stop_reason, error, usage, and context are terminal-only fields"
+                    )
+
+                for chunk in chunks:
+                    if chunk.content_delta is not None:
+                        content.append(chunk.content_delta)
+                    if chunk.tool_calls is not None:
+                        tool_calls.extend(chunk.tool_calls)
+                sanitized = tuple(
+                    dataclasses.replace(chunk, context=None) for chunk in chunks
+                )
+                if not frame.is_last:
+                    yield dataclasses.replace(
+                        frame, data=tuple(chunk.to_dict() for chunk in sanitized)
+                    )
+                    continue
+
+                terminal = next(
+                    (chunk for chunk in reversed(sanitized)
+                     if chunk.stop_reason is not None),
+                    None,
+                )
+                failed = frame.error_code is not None or any(
+                    chunk.stop_reason == LlmStopReason.ERROR or chunk.error is not None
+                    for chunk in sanitized
+                )
+                if failed:
+                    code = frame.error_code or error_codes.NODE_UNAVAILABLE
+                    self._abort(reservation, code)
+                    resolved = True
+                    yield dataclasses.replace(
+                        frame,
+                        is_last=True,
+                        error_code=code,
+                        data=tuple(chunk.to_dict() for chunk in sanitized),
+                    )
+                    return
+                if terminal is None:
+                    raise _internal_error(
+                        "successful LLM stream terminal frame requires stop_reason"
+                    )
+
+                try:
+                    await self._check_authorization(
+                        owner,
+                        request_frame.action_id,
+                        LlmAuthorizationStage.COMMIT,
+                        _required_capabilities(request_frame),
+                        action_context,
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except ActionExecutionError as ex:
+                    self._abort(reservation, ex.error_code)
+                    resolved = True
+                    raise
+                except Exception:
+                    self._abort(reservation, error_codes.NODE_UNAVAILABLE)
+                    resolved = True
+                    raise
+
+                try:
+                    receipt = self.store.commit(
+                        reservation,
+                        LlmMessageDto(
+                            role="assistant",
+                            content="".join(content) or None,
+                            tool_calls=tuple(tool_calls) or None,
+                        ),
+                    )
+                except LlmContextStoreError as ex:
+                    self._abort(reservation, ex.error_code)
+                    resolved = True
+                    raise _store_error(ex) from ex
+                resolved = True
+                committed = tuple(
+                    dataclasses.replace(chunk, context=receipt)
+                    if chunk is terminal else chunk
+                    for chunk in sanitized
+                )
+                yield dataclasses.replace(
+                    frame, data=tuple(chunk.to_dict() for chunk in committed)
+                )
+                return
+            raise _internal_error(
+                "stateful llm.complete stream ended without a terminal frame"
+            )
+        finally:
+            if not resolved:
+                self._abort(reservation, error_codes.NODE_UNAVAILABLE)
 
     def _status(self, frame: ActionFrame, context: ActionContext) -> ActionExecutionResult:
         params = _params(frame, LLM_CONTEXT_STATUS)
@@ -356,11 +515,19 @@ class StatefulLlmActionProvider(IActionNodeProvider):
         owner: LlmContextOwner,
         action_id: str,
         stage: LlmAuthorizationStage,
+        required_capabilities: tuple[str, ...],
         context: ActionContext,
     ) -> None:
         if self._options.authorizer is None:
-            return
-        result = self._options.authorizer(owner, action_id, stage, context)
+            raise ActionExecutionError(
+                403,
+                NPS_AUTH_FORBIDDEN,
+                error_codes.LLM_CONTEXT_FORBIDDEN,
+                "stateful LLM context authorization is not configured",
+            )
+        result = self._options.authorizer(
+            owner, action_id, stage, required_capabilities, context
+        )
         if inspect.isawaitable(result):
             await result
 
@@ -377,6 +544,19 @@ def _params(frame: ActionFrame, action_id: str) -> dict[str, Any]:
     if not isinstance(frame.params, dict):
         raise _params_error(f"{action_id} requires an object params payload")
     return frame.params
+
+
+def _required_capabilities(frame: ActionFrame) -> tuple[str, ...]:
+    if frame.action_id in (LLM_CONTEXT_STATUS, LLM_CONTEXT_RELEASE):
+        return (CAPABILITY_LLM_CONTEXT,)
+    capabilities = [CAPABILITY_LLM_COMPLETE, CAPABILITY_LLM_CONTEXT]
+    params = frame.params if isinstance(frame.params, dict) else {}
+    if params.get("stream") is True:
+        capabilities.append(CAPABILITY_LLM_STREAM)
+    tools = params.get("tools")
+    if isinstance(tools, list) and tools:
+        capabilities.append(CAPABILITY_LLM_TOOL_CALL)
+    return tuple(capabilities)
 
 
 def _wire(value: Any) -> Any:

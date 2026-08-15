@@ -27,13 +27,17 @@ from nps_sdk.nwp.llm import (
 
 ALICE = LlmContextOwner("urn:nps:agent:labacacia:alice", "workspace-a")
 BOB = LlmContextOwner("urn:nps:agent:labacacia:bob", "workspace-a")
-FIXTURE = (
-    Path(__file__).parents[3]
-    / "spec"
-    / "conformance"
-    / "nwp"
-    / "llm_context_vectors.json"
-)
+
+
+def _repo_file(relative: str) -> Path:
+    for root in (Path(__file__).resolve().parent, *Path(__file__).resolve().parents):
+        candidate = root / relative
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(f"Unable to locate repository file: {relative}")
+
+
+FIXTURE = _repo_file("spec/conformance/nwp/llm_context_vectors.json")
 
 
 def system(content: str) -> LlmMessageDto:
@@ -154,7 +158,97 @@ def test_shared_context_vector(vector):
         "nwp.llm-context.019": _missing_idempotency,
     }
     assert vector["id"] in cases
+    _assert_fixture_contract(vector)
     cases[vector["id"]]()
+
+
+def _assert_fixture_contract(vector: dict) -> None:
+    """Make fixture input and expected values executable, not ID-only labels."""
+    vector_id = vector["id"]
+    input_ = vector["input"]
+    expected = vector["expected"]
+    assert input_ and expected
+
+    if vector_id.endswith(".001"):
+        assert "context" not in input_["params"]
+        assert expected == {
+            "mode": "stateless", "dispatched": True, "context_mutated": False,
+            "response_context_present": False,
+        }
+    elif vector_id.endswith(".002"):
+        assert expected["owner_nid"] == input_["owner_nid"]
+        assert expected["version"] == 1 and expected["committed"]
+    elif vector_id.endswith(".003"):
+        assert expected["version"] == input_["pre_state"]["version"] + 1
+        assert expected["accepted_delta_message_count"] == len(input_["params"]["messages"])
+        assert expected["post_message_count"] == (
+            len(input_["pre_state"]["messages"]) + len(input_["params"]["messages"]) + 1
+        )
+    elif vector_id.endswith(".004"):
+        assert expected["post_version"] == input_["pre_state"]["version"]
+        assert expected["hint"]["current_version"] == input_["pre_state"]["version"]
+        assert expected["error"] == error_codes.LLM_CONTEXT_VERSION_CONFLICT
+    elif vector_id.endswith(".005"):
+        assert expected["parent_version"] == input_["request"]["base_version"]
+        assert expected["post_parent_version"] == input_["parent_version_at_child_commit"]
+        assert expected["version"] == 1
+    elif vector_id.endswith(".006"):
+        assert expected["version"] == input_["pre_state"]["version"] + 1
+        assert expected["resolved_model"] == input_["request"]["model"]
+    elif vector_id.endswith(".007"):
+        assert expected["post_version"] == input_["pre_state"]["version"]
+        assert expected["error"] == error_codes.LLM_CONTEXT_BINDING_MISMATCH
+        assert not expected["provider_dispatched"] and not expected["stateless_fallback"]
+    elif vector_id.endswith(".008"):
+        assert input_["owner_nid"] != input_["caller_nid"]
+        assert "llm:context" not in input_["caller_capabilities"]
+        assert expected["error"] == error_codes.LLM_CONTEXT_FORBIDDEN
+    elif vector_id.endswith(".009"):
+        assert expected["post_version"] == input_["pre_state"]["version"]
+        assert not expected["committed"] and expected["reservation_released"]
+    elif vector_id.endswith(".010"):
+        assert not expected["running_status"]["context_id_present"]
+        assert expected["completed_status"]["context_id"] == input_["status_sequence"][-1]["context_id"]
+        assert expected["completed_status"]["version"] == input_["status_sequence"][-1]["version"]
+    elif vector_id.endswith(".011"):
+        assert expected["release_receipt"]["version"] == input_["pre_state"]["version"] + 1
+        assert expected["expiry_tombstone"]["version"] == input_["expiry_branch"]["active_version"]
+    elif vector_id.endswith(".012"):
+        usage = input_["usage"]
+        assert usage["input_tokens"] == usage["reused_tokens"] + usage["evaluated_tokens"]
+        assert usage["wire_input_bytes"] < input_["stateless_wire_input_bytes"]
+        assert expected["usage_equation_valid"] and expected["wire_input_smaller_than_stateless"]
+    elif vector_id.endswith(".013"):
+        manifest = input_["manifest"]
+        assert manifest["context"]["operations"] == input_["implemented_operations"]
+        assert manifest["context"]["persistence"] == input_["implemented_persistence"]
+        assert expected["manifest_valid"] and expected["requires_capability"] == "llm:context"
+    elif vector_id.endswith(".014"):
+        assert input_["persistence"] == "process" and input_["event"] == "process_restart"
+        assert expected["error"] == error_codes.LLM_CONTEXT_NOT_FOUND
+        assert not expected["replacement_created"] and not expected["stateless_fallback"]
+    elif vector_id.endswith(".015"):
+        assert "".join(input_["original"]["chunks"]) == expected["ordered_content"]
+        assert input_["original"]["stream_id"] != input_["replay_stream_id"]
+        assert expected["provider_invocations"] == expected["additional_context_commits"] == 0
+    elif vector_id.endswith(".016"):
+        assert input_["authorization_at_admission"] == "valid"
+        assert input_["authorization_at_commit"] == "revoked"
+        assert expected["post_version"] == input_["pre_state"]["version"]
+        assert expected["error"] == error_codes.AUTH_NID_REVOKED
+    elif vector_id.endswith(".017"):
+        assert input_["live_contexts"] == input_["max_contexts_per_principal"]
+        assert expected["error"] == error_codes.LLM_CONTEXT_LIMIT_EXCEEDED
+        assert not expected["context_allocated"]
+    elif vector_id.endswith(".018"):
+        assert input_["request"]["operation"] not in input_["advertised_operations"]
+        assert expected["error"] == error_codes.LLM_CONTEXT_OPERATION_UNSUPPORTED
+    elif vector_id.endswith(".019"):
+        assert not input_["idempotency_key_present"]
+        assert expected["error"] == error_codes.ACTION_PARAMS_INVALID
+        assert not expected["context_allocated"] and not expected["provider_dispatched"]
+    else:
+        pytest.fail(f"unimplemented fixture contract: {vector_id}")
 
 
 def _stateless_compatibility():

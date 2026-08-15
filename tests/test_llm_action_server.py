@@ -6,12 +6,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from enum import Enum
 
 import httpx
 import pytest
 
 from nps_sdk.core.status_codes import NPS_AUTH_UNAUTHENTICATED
+from nps_sdk.ncp.frames import StreamFrame
 from nps_sdk.nwp import error_codes
 from nps_sdk.nwp.action_node_server import (
     SYSTEM_TASK_CANCEL,
@@ -51,6 +53,7 @@ class ProviderMode(str, Enum):
     SUCCESS = "success"
     FAILURE = "failure"
     MODEL_ERROR = "model_error"
+    STREAM_ABNORMAL = "stream_abnormal"
 
 
 class _LlmProvider(IActionNodeProvider):
@@ -76,6 +79,8 @@ class _LlmProvider(IActionNodeProvider):
             raise ActionExecutionError(
                 500, "NPS-SERVER-INTERNAL", error_codes.NODE_UNAVAILABLE, "provider failed"
             )
+        if frame.params.get("stream") is True:
+            return ActionExecutionResult(stream_frames=self._stream(), token_est=1)
         if self.mode == ProviderMode.MODEL_ERROR:
             return ActionExecutionResult(
                 result={
@@ -96,10 +101,32 @@ class _LlmProvider(IActionNodeProvider):
                 "usage": {
                     "input_tokens": 2,
                     "output_tokens": 1,
-                    "wire_input_bytes": 128,
+                    "wire_input_bytes": context.wire_input_bytes,
                 },
             },
             token_est=1,
+        )
+
+    async def _stream(self):
+        yield StreamFrame(
+            stream_id="provider-stream",
+            seq=0,
+            is_last=False,
+            anchor_ref="nps:system:llm.complete:stream",
+            data=({"content_delta": "Fir"},),
+        )
+        await asyncio.sleep(0)
+        if self.mode == ProviderMode.STREAM_ABNORMAL:
+            return
+        yield StreamFrame(
+            stream_id="provider-stream",
+            seq=1,
+            is_last=True,
+            data=({
+                "content_delta": "st",
+                "stop_reason": "end_turn",
+                "usage": {"input_tokens": 2, "output_tokens": 1},
+            },),
         )
 
 
@@ -126,6 +153,8 @@ class _Harness:
             "runtime-1",
             provider_name="willow",
             default_model="willow-small",
+            supports_stream=True,
+            authorizer=lambda *_: None,
         )
         self.coordinator = StatefulLlmActionProvider(
             self.inner, self.store, self.options
@@ -187,7 +216,7 @@ async def test_nwm_advertises_exact_actions_and_process_limits(harness: _Harness
     profile = response.json()["profiles"]["llm"]
     assert profile["profile_version"] == "0.2"
     assert profile["provider"] == "willow"
-    assert profile["supports_stream"] is False
+    assert profile["supports_stream"] is True
     assert profile["context"] == {
         "supported": True,
         "operations": ["create", "append", "reset", "release"],
@@ -212,10 +241,62 @@ async def test_synchronous_create_commits_and_status_recovers_it(
     assert receipt["version"] == 1
     assert receipt["operation"] == "create"
     assert receipt["state"] == "active"
-    assert completion["usage"]["wire_input_bytes"] == 128
+    assert completion["usage"]["wire_input_bytes"] > 0
     assert status["state"] == "active"
     assert status["version"] == 1
     assert harness.inner.calls == 1
+
+
+async def test_reconnect_concurrent_append_and_process_restart_contract(
+    harness: _Harness,
+) -> None:
+    # Treat the successful create body as lost, then recover it on a new HTTP connection.
+    async with harness.client() as first_connection:
+        lost = await _invoke(first_connection, LLM_COMPLETE, _create_params(), "lost-create")
+        assert lost.status_code == 200
+    async with harness.client() as reconnected:
+        recovered = _data(await _invoke(
+            reconnected,
+            LLM_CONTEXT_STATUS,
+            {"idempotency_key": "lost-create"},
+        ))
+        context_id = recovered["context_id"]
+        assert recovered["state"] == "active"
+        assert recovered["version"] == 1
+
+        append = {
+            "kind": LLM_COMPLETE,
+            "model": "willow-small",
+            "messages": [{"role": "user", "content": "Two"}],
+            "context": {
+                "operation": "append",
+                "context_id": context_id,
+                "base_version": 1,
+            },
+        }
+        harness.inner.delay = 0.2
+        harness.inner.started.clear()
+        winner_task = asyncio.create_task(
+            _invoke(reconnected, LLM_COMPLETE, append, "append-winner")
+        )
+        await asyncio.wait_for(harness.inner.started.wait(), timeout=1)
+        loser = await _invoke(reconnected, LLM_COMPLETE, append, "append-loser")
+        assert loser.status_code == 409
+        assert loser.json()["error"] == error_codes.LLM_CONTEXT_VERSION_CONFLICT
+        winner = await winner_task
+        assert _data(winner)["context"]["version"] == 2
+        assert harness.inner.calls == 2
+
+    # A fresh process-local store cannot resolve or mutate the old context.
+    restarted = _Harness()
+    append["context"]["base_version"] = 2
+    async with restarted.client() as after_restart:
+        missing = await _invoke(
+            after_restart, LLM_COMPLETE, append, "append-after-restart"
+        )
+    assert missing.status_code == 404
+    assert missing.json()["error"] == error_codes.LLM_CONTEXT_NOT_FOUND
+    assert restarted.inner.calls == 0
 
 
 async def test_append_commits_delta_and_release_creates_tombstone(
@@ -274,7 +355,7 @@ async def test_provider_and_model_errors_abort_without_allocating_context(
 async def test_commit_reauthorization_failure_aborts_and_surfaces_auth_error(
     harness: _Harness,
 ) -> None:
-    def authorize(_owner, _action, stage, _context) -> None:
+    def authorize(_owner, _action, stage, _required_capabilities, _context) -> None:
         if stage == LlmAuthorizationStage.COMMIT:
             raise ActionExecutionError(
                 401,
@@ -327,6 +408,47 @@ async def test_async_cancellation_aborts_reservation(harness: _Harness) -> None:
     assert "context_id" not in status
 
 
+async def test_streaming_create_commits_terminal_and_replays_fresh_stream_id(
+    harness: _Harness,
+) -> None:
+    params = {**_create_params(), "stream": True}
+    async with harness.client() as http:
+        first = await _invoke(http, LLM_COMPLETE, params, "stream-create")
+        replay = await _invoke(http, LLM_COMPLETE, params, "stream-create")
+    first_frames = _stream_frames(first)
+    replay_frames = _stream_frames(replay)
+    assert [frame["is_last"] for frame in first_frames] == [False, True]
+    assert first_frames[0]["stream_id"] != replay_frames[0]["stream_id"]
+    assert "context" not in first_frames[0]["data"][0]
+    receipt = first_frames[1]["data"][0]["context"]
+    assert receipt == replay_frames[1]["data"][0]["context"]
+    assert receipt["version"] == 1
+    assert harness.inner.calls == 1
+    snapshot = harness.store.snapshot(_owner(ALICE), receipt["context_id"])
+    assert snapshot.transcript[-1].content == "First"
+
+
+async def test_streaming_abnormal_end_aborts_and_emits_terminal_error(
+    harness: _Harness,
+) -> None:
+    harness.inner.mode = ProviderMode.STREAM_ABNORMAL
+    async with harness.client() as http:
+        response = await _invoke(
+            http,
+            LLM_COMPLETE,
+            {**_create_params(), "stream": True},
+            "stream-abnormal",
+        )
+        status = _data(await _invoke(
+            http, LLM_CONTEXT_STATUS, {"idempotency_key": "stream-abnormal"}
+        ))
+    frames = _stream_frames(response)
+    assert frames[-1]["is_last"] is True
+    assert frames[-1]["error_code"] == error_codes.NODE_UNAVAILABLE
+    assert status["state"] == "failed"
+    assert "context_id" not in status
+
+
 async def test_async_task_status_and_cancel_are_caller_scoped(harness: _Harness) -> None:
     harness.inner.delay = 5
     async with harness.client(ALICE) as alice:
@@ -367,7 +489,7 @@ async def test_response_idempotency_is_owner_scoped_and_does_not_recommit(
 async def test_cached_replay_rechecks_authorization(harness: _Harness) -> None:
     admitted = True
 
-    def authorize(_owner, _action, stage, _context) -> None:
+    def authorize(_owner, _action, stage, _required_capabilities, _context) -> None:
         if stage == LlmAuthorizationStage.ADMISSION and not admitted:
             raise ActionExecutionError(
                 401,
@@ -387,22 +509,60 @@ async def test_cached_replay_rechecks_authorization(harness: _Harness) -> None:
     assert harness.inner.calls == 1
 
 
+async def test_authorization_capabilities_and_fail_closed(harness: _Harness) -> None:
+    checks: list[tuple[str, ...]] = []
+
+    def authorize(_owner, _action, _stage, required_capabilities, _context) -> None:
+        checks.append(required_capabilities)
+
+    harness.options.authorizer = authorize
+    async with harness.client() as http:
+        created = await _invoke(http, LLM_COMPLETE, _create_params(), "capabilities")
+        status = await _invoke(
+            http, LLM_CONTEXT_STATUS, {"idempotency_key": "capabilities"}
+        )
+        extended_params = _create_params()
+        extended_params["stream"] = True
+        extended_params["tools"] = [{"name": "lookup"}]
+        extended = await _invoke(
+            http, LLM_COMPLETE, extended_params, "extended-capabilities"
+        )
+        assert created.status_code == 200
+        assert status.status_code == 200
+        assert extended.status_code == 422
+        assert checks == [
+            ("llm:complete", "llm:context"),
+            ("llm:complete", "llm:context"),
+            ("llm:context",),
+            ("llm:complete", "llm:context", "llm:stream", "llm:tool_call"),
+        ]
+
+        harness.options.authorizer = None
+        denied = await _invoke(http, LLM_COMPLETE, _create_params(), "no-authorizer")
+    assert denied.status_code == 403
+    assert denied.json()["error"] == error_codes.LLM_CONTEXT_FORBIDDEN
+    assert harness.inner.calls == 1
+
+
 async def test_malformed_stateful_requests_fail_before_provider_dispatch(
     harness: _Harness,
 ) -> None:
     requests = [
-        (_create_params(), None),
-        ({**_create_params(), "kind": "wrong.kind"}, "wrong-kind"),
-        ({**_create_params(), "stream": True}, "streamed"),
-        ({**_create_params(), "tools": [{"name": "lookup"}]}, "tools"),
+        (_create_params(), None, False),
+        ({**_create_params(), "kind": "wrong.kind"}, "wrong-kind", False),
+        ({**_create_params(), "stream": True}, "streamed", True),
+        ({**_create_params(), "tools": [{"name": "lookup"}]}, "tools", False),
         (
             {**_create_params(), "context": {"operation": "reset"}},
             "reset-without-version",
+            False,
         ),
     ]
     async with harness.client() as http:
-        for params, key in requests:
-            response = await _invoke(http, LLM_COMPLETE, params, key)
+        for params, key, async_ in requests:
+            response = await _invoke(
+                http, LLM_COMPLETE, params, key, async_=async_
+            )
             assert response.status_code == 422
             assert response.json()["error"] == error_codes.ACTION_PARAMS_INVALID
     assert harness.inner.calls == 0
@@ -457,3 +617,9 @@ async def _wait_for_context_outcome(http: httpx.AsyncClient, key: str) -> dict:
 
 def _owner(nid: str) -> LlmContextOwner:
     return LlmContextOwner(nid, "workspace-a")
+
+
+def _stream_frames(response: httpx.Response) -> list[dict]:
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"] == "application/x-ndjson"
+    return [json.loads(line) for line in response.text.splitlines() if line]

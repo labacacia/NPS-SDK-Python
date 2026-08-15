@@ -269,6 +269,28 @@ class LlmCompleteStreamChunkDto:
     def to_dict(self) -> dict[str, Any]:
         return _wire(self)
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "LlmCompleteStreamChunkDto":
+        usage = data.get("usage")
+        context = data.get("context")
+        return cls(
+            content_delta=data.get("content_delta"),
+            tool_calls=_tool_calls(data.get("tool_calls")),
+            stop_reason=(None if data.get("stop_reason") is None
+                         else LlmStopReason(data["stop_reason"])),
+            error=data.get("error"),
+            usage=None if usage is None else LlmUsageDto(**usage),
+            context=None if context is None else LlmContextReceiptDto(
+                context_id=context["context_id"],
+                version=context["version"],
+                operation=LlmContextOperation(context["operation"]),
+                state=LlmContextState(context["state"]),
+                expires_at=context.get("expires_at"),
+                parent_context_id=context.get("parent_context_id"),
+                parent_version=context.get("parent_version"),
+            ),
+        )
+
 
 def context_status_action_frame(
     request: LlmContextStatusRequestDto,
