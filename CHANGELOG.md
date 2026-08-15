@@ -8,7 +8,7 @@ Until NPS reaches v1.0 stable, every repository in the suite is synchronized to 
 
 ---
 
-## [1.0.0-alpha.18] — Unreleased
+## [1.0.0-alpha.18] — 2026-08-15
 
 ### Added
 
