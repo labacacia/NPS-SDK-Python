@@ -185,10 +185,10 @@ results = [NpsConformanceCaseResult(case.id, "pass") for case in catalog_for_pro
 manifest = NpsConformanceManifest.create(
     profile=NODE_L1,
     iut_name="my-node",
-    iut_version="1.0.0-alpha.16",
+    iut_version="1.0.0-alpha.18",
     iut_nid="urn:nps:node:example.com:my-node",
     peer_name="labacacia-fixture",
-    peer_version="1.0.0-alpha.16",
+    peer_version="1.0.0-alpha.18",
     results=results,
 )
 result = validate_manifest(manifest)
