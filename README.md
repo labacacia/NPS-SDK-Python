@@ -15,7 +15,7 @@ PyPI package: `nps-lib` | Python namespace: `nps_sdk`
 
 ## Status
 
-**v1.0.0-alpha.18 release — portable protocol conformance**
+**v1.0.0-alpha.19 release candidate — portable protocol conformance**
 
 Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, Ed25519 identity management, **plus full NPS-RFC-0002 X.509 + ACME `agent-01` NID certificate primitives** (`nps_sdk.nip.x509` + `nps_sdk.nip.acme`).
 
@@ -188,10 +188,10 @@ results = [NpsConformanceCaseResult(case.id, "pass") for case in catalog_for_pro
 manifest = NpsConformanceManifest.create(
     profile=NODE_L1,
     iut_name="my-node",
-    iut_version="1.0.0-alpha.18",
+    iut_version="1.0.0-alpha.19",
     iut_nid="urn:nps:node:example.com:my-node",
     peer_name="labacacia-fixture",
-    peer_version="1.0.0-alpha.18",
+    peer_version="1.0.0-alpha.19",
     results=results,
 )
 result = validate_manifest(manifest)
