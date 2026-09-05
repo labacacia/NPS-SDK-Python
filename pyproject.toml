@@ -31,6 +31,11 @@ dependencies = [
     "cryptography>=43.0.0",
 ]
 
+[project.urls]
+Repository = "https://github.com/labacacia/NPS-SDK-Python"
+Documentation = "https://github.com/labacacia/NPS-Release"
+Issues = "https://github.com/labacacia/NPS-SDK-Python/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
