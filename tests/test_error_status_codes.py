@@ -262,8 +262,9 @@ class TestNcpMappingDict:
     def test_mapping_count(self):
         # 17 through alpha.16; +1 for NCP-NID-MISMATCH, which spec/error-codes.md has
         # carried since RFC-0006 but the Python SDK had never declared. NPS-CR-0009's
-        # failover connector matches on it, so it is now a first-class constant.
-        assert len(NCP_ERROR_TO_NPS_STATUS) == 18
+        # failover connector matches on it, so it is now a first-class constant;
+        # +1 for alpha.19 QUIC early-data rejection.
+        assert len(NCP_ERROR_TO_NPS_STATUS) == 19
 
     def test_spot_checks(self):
         assert NCP_ERROR_TO_NPS_STATUS[NCP_ANCHOR_NOT_FOUND] == "NPS-CLIENT-NOT-FOUND"

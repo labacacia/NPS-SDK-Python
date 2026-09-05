@@ -15,7 +15,7 @@ PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 
 ## 状态
 
-**v1.0.0-alpha.18 发布版 —— 可移植协议一致性**
+**v1.0.0-alpha.19 发布候选版 —— 可移植协议一致性**
 
 包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端，**加完整 NPS-RFC-0002 X.509 + ACME `agent-01` NID 证书原语**（`nps_sdk.nip.x509` + `nps_sdk.nip.acme`）。
 
@@ -185,10 +185,10 @@ results = [NpsConformanceCaseResult(case.id, "pass") for case in catalog_for_pro
 manifest = NpsConformanceManifest.create(
     profile=NODE_L1,
     iut_name="my-node",
-    iut_version="1.0.0-alpha.18",
+    iut_version="1.0.0-alpha.19",
     iut_nid="urn:nps:node:example.com:my-node",
     peer_name="labacacia-fixture",
-    peer_version="1.0.0-alpha.18",
+    peer_version="1.0.0-alpha.19",
     results=results,
 )
 result = validate_manifest(manifest)

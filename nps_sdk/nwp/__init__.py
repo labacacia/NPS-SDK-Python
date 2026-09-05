@@ -21,6 +21,7 @@ from nps_sdk.nwp.frames import (
 from nps_sdk.nwp.client import NwpClient
 from nps_sdk.nwp import error_codes
 from nps_sdk.nwp.error_codes import NWP_ERROR_TO_NPS_STATUS
+from nps_sdk.nwp.alpha19_policy import normalize_manifest_metadata, evaluate_subscription_lease
 from nps_sdk.nwp.anchor_client import (
     MemberInfo,
     TopologySnapshot,
@@ -176,6 +177,8 @@ __all__ = [
     # error codes
     "error_codes",
     "NWP_ERROR_TO_NPS_STATUS",
+    "normalize_manifest_metadata",
+    "evaluate_subscription_lease",
     # Anchor topology
     "MemberInfo",
     "TopologySnapshot",

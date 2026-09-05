@@ -42,6 +42,7 @@ NCP_PREAMBLE_INVALID     = "NCP-PREAMBLE-INVALID"
 # NPS-CR-0009 §3.3 reuses it as the native-path failover trigger: it is what a client
 # sees when it reconnects to an Anchor that no longer owns the cluster.
 NCP_NID_MISMATCH         = "NCP-NID-MISMATCH"
+NCP_EARLY_DATA_REJECTED  = "NCP-EARLY-DATA-REJECTED"
 
 # ── NPS status mapping ────────────────────────────────────────────────────────
 from nps_sdk.core.status_codes import (  # noqa: E402
@@ -77,4 +78,5 @@ NCP_ERROR_TO_NPS_STATUS: dict[str, str] = {
     NCP_VERSION_INCOMPATIBLE:     NPS_PROTO_VERSION_INCOMPATIBLE,
     NCP_PREAMBLE_INVALID:         NPS_PROTO_PREAMBLE_INVALID,
     NCP_NID_MISMATCH:             NPS_AUTH_UNAUTHENTICATED,
+    NCP_EARLY_DATA_REJECTED:      NPS_PROTO_VERSION_INCOMPATIBLE,
 }

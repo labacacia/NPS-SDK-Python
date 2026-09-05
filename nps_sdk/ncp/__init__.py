@@ -24,6 +24,7 @@ from nps_sdk.ncp.failover import (
 )
 from nps_sdk.ncp import error_codes
 from nps_sdk.ncp.error_codes import NCP_ERROR_TO_NPS_STATUS
+from nps_sdk.ncp.runtime_hardening import evaluate_runtime_hardening
 from nps_sdk.ncp.encoding_policy import NcpEncodingPolicy
 from nps_sdk.ncp.session import NcpSession, read_frame_header
 from nps_sdk.ncp.client import NcpNativeClient, NcpHandshakeError
@@ -56,6 +57,7 @@ __all__ = [
     "is_failover_shaped",
     "error_codes",
     "NCP_ERROR_TO_NPS_STATUS",
+    "evaluate_runtime_hardening",
     "NcpEncodingPolicy",
     "NcpSession",
     "read_frame_header",

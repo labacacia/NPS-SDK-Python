@@ -45,6 +45,7 @@ from nps_sdk.ndp.registry_profile import (
 from nps_sdk.ndp.validator import NdpAnnounceResult, NdpAnnounceValidator
 from nps_sdk.ndp import error_codes
 from nps_sdk.ndp.error_codes import NDP_ERROR_TO_NPS_STATUS
+from nps_sdk.ndp.recovery_policy import evaluate_recovery
 
 __all__ = [
     "AnnounceFrame",
@@ -81,4 +82,5 @@ __all__ = [
     "verify_announce_signature",
     "error_codes",
     "NDP_ERROR_TO_NPS_STATUS",
+    "evaluate_recovery",
 ]
