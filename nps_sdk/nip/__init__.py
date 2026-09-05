@@ -35,6 +35,11 @@ from nps_sdk.nip.ca_client import (
 )
 from nps_sdk.nip import error_codes
 from nps_sdk.nip.error_codes import NIP_ERROR_TO_NPS_STATUS
+from nps_sdk.nip.alpha19_policy import (
+    evaluate_phase3_advisory,
+    evaluate_renewal,
+    evaluate_revocation,
+)
 from nps_sdk.nip.verifier import (
     NipCertRecord,
     NipIdentVerifier,
@@ -122,6 +127,9 @@ __all__ = [
     "NipCaVerifyResponse",
     "error_codes",
     "NIP_ERROR_TO_NPS_STATUS",
+    "evaluate_phase3_advisory",
+    "evaluate_renewal",
+    "evaluate_revocation",
     "NipCertRecord",
     "NipIdentVerifier",
     "NipIdentVerifyResult",

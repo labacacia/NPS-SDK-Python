@@ -29,6 +29,7 @@ from nps_sdk.nop.cluster_delegation import (
 )
 from nps_sdk.nop import error_codes
 from nps_sdk.nop.error_codes import NOP_ERROR_TO_NPS_STATUS
+from nps_sdk.nop.replay_policy import evaluate_replay_retention
 
 # ── Server-side orchestration engine ──────────────────────────────────────────
 from nps_sdk.nop.constants import NopConstants
@@ -88,6 +89,7 @@ __all__ = [
     # error codes
     "error_codes",
     "NOP_ERROR_TO_NPS_STATUS",
+    "evaluate_replay_retention",
     # constants
     "NopConstants",
     # condition

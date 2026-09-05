@@ -75,7 +75,7 @@ class NpsConformanceManifest:
         cases = tuple(results)
         return cls(
             profile=profile,
-            profile_version="0.3" if profile == NODE_L2 else "0.1",
+            profile_version="0.7" if profile == NODE_L2 else "0.1",
             iut=NpsConformanceActor(iut_name, iut_version, iut_nid),
             peer=NpsConformanceActor(peer_name, peer_version),
             run={"date": _dt.datetime.now(_dt.UTC).isoformat(), "environment": environment},
@@ -133,12 +133,55 @@ def validate_manifest(manifest: NpsConformanceManifest) -> NpsConformanceValidat
             return NpsConformanceValidation(False, f"Case '{result.id}' has invalid result '{result.result}'.")
         if result.result == "na" and not known[result.id].optional:
             return NpsConformanceValidation(False, f"Case '{result.id}' is required and cannot be marked na.")
+        if (
+            result.result == "na"
+            and result.id in {"TC-N2-AaaS-06", "TC-N2-AaaS-07"}
+            and not (result.message or "").strip()
+        ):
+            return NpsConformanceValidation(
+                False,
+                f"Case '{result.id}' requires a non-empty message for a SHOULD exception.",
+            )
 
     missing = [case.id for case in catalog if case.id not in seen]
     if missing:
         return NpsConformanceValidation(False, f"Missing conformance case results: {', '.join(missing)}.")
     if any(case.result in {"fail", "skip"} for case in manifest.cases):
         return NpsConformanceValidation(False, "Conformance manifest contains fail or skip results.")
+    expected_version = "0.7" if manifest.profile == NODE_L2 else "0.1"
+    if manifest.profile_version != expected_version:
+        return NpsConformanceValidation(
+            False,
+            f"Profile '{manifest.profile}' requires manifest version '{expected_version}'.",
+        )
+    expected_summary = {
+        "pass": sum(1 for case in manifest.cases if case.result == "pass"),
+        "fail": sum(1 for case in manifest.cases if case.result == "fail"),
+        "skip": sum(1 for case in manifest.cases if case.result == "skip"),
+        "na": sum(1 for case in manifest.cases if case.result == "na"),
+    }
+    if manifest.summary != expected_summary:
+        return NpsConformanceValidation(False, "Conformance manifest summary does not match case results.")
+    if manifest.profile == NODE_L2:
+        results = {case.id: case.result for case in manifest.cases}
+        families = (
+            ("TC-N2-Tls-01", "TC-N2-Tls-02", "TC-N2-Tls-03", "TC-N2-Tls-04"),
+            tuple(f"TC-N2-BridgeIn-0{i}" for i in range(1, 7)),
+            tuple(f"TC-N2-HA-0{i}" for i in range(1, 7)),
+            ("TC-N2-HA-07", "TC-N2-HA-08"),
+        )
+        for family in families:
+            family_results = {results[case_id] for case_id in family}
+            if len(family_results) != 1 or not family_results <= {"pass", "na"}:
+                return NpsConformanceValidation(
+                    False,
+                    f"L2 case family '{family[0]}' must be all pass or all na.",
+                )
+        if (results["TC-N2-HA-01"] == "na") == (results["TC-N2-HA-09"] == "na"):
+            return NpsConformanceValidation(
+                False,
+                "L2 multi-Anchor HA and single-Anchor compatibility cases must have opposite applicability.",
+            )
     return NpsConformanceValidation(True, "Conformance manifest is valid.")
 
 
@@ -170,6 +213,13 @@ NODE_L1_CASES: tuple[NpsConformanceCase, ...] = (
 )
 
 NODE_L2_CASES: tuple[NpsConformanceCase, ...] = (
+    _c("TC-N2-AaaS-01", NODE_L2, "L2-01", "Internal work uses NOP TaskFrame"),
+    _c("TC-N2-AaaS-02", NODE_L2, "L2-02", "OpenTelemetry TaskFrame context injection"),
+    _c("TC-N2-AaaS-03", NODE_L2, "L2-03", "CGN-Estimate budget and token_est response"),
+    _c("TC-N2-AaaS-04", NODE_L2, "L2-04", "NOP preflight gates worker dispatch"),
+    _c("TC-N2-AaaS-05", NODE_L2, "L2-05", "NOP retry and timeout semantics"),
+    _c("TC-N2-AaaS-06", NODE_L2, "L2-06", "Asynchronous Action lifecycle", True),
+    _c("TC-N2-AaaS-07", NODE_L2, "L2-07", "AlignStream CGN back-pressure", True),
     _c("TC-N2-AnchorTopo-01", NODE_L2, "L2-08", "Snapshot of a 3-member cluster"),
     _c("TC-N2-AnchorTopo-02", NODE_L2, "L2-08", "Version monotonicity across joins"),
     _c("TC-N2-AnchorTopo-03", NODE_L2, "L2-08", "Sub-Anchor member surfaces"),
@@ -182,8 +232,23 @@ NODE_L2_CASES: tuple[NpsConformanceCase, ...] = (
     _c("TC-N2-AnchorTopo-07", NODE_L2, "L2-08", "Unsupported topology filter"),
     _c("TC-N2-AnchorTopo-08", NODE_L2, "L2-08", "Unsupported reserved topology type"),
     _c("TC-N2-AnchorStream-04", NODE_L2, "L2-08", "resync_required when version is too old"),
-    _c("TC-N2-Tls-01", NODE_L2, "NPS-RFC-0006", "ALPN nps/1.0 negotiated over TLS 1.3"),
-    _c("TC-N2-Tls-02", NODE_L2, "NPS-RFC-0006", "Mutual TLS required"),
-    _c("TC-N2-Tls-03", NODE_L2, "NPS-RFC-0006", "Client cert trust anchor and NID binding"),
-    _c("TC-N2-Tls-04", NODE_L2, "NPS-RFC-0006", "IdentFrame/certificate NID mismatch"),
+    _c("TC-N2-Tls-01", NODE_L2, "NPS-RFC-0006", "ALPN nps/1.0 negotiated over TLS 1.3", True),
+    _c("TC-N2-Tls-02", NODE_L2, "NPS-RFC-0006", "Mutual TLS required", True),
+    _c("TC-N2-Tls-03", NODE_L2, "NPS-RFC-0006", "Client cert trust anchor and NID binding", True),
+    _c("TC-N2-Tls-04", NODE_L2, "NPS-RFC-0006", "IdentFrame/certificate NID mismatch", True),
+    _c("TC-N2-BridgeIn-01", NODE_L2, "NPS-CR-0010", "MCP inbound required method set", True),
+    _c("TC-N2-BridgeIn-02", NODE_L2, "NPS-CR-0010", "gRPC inbound round-trip", True),
+    _c("TC-N2-BridgeIn-03", NODE_L2, "NPS-CR-0010", "A2A inbound round-trip", True),
+    _c("TC-N2-BridgeIn-04", NODE_L2, "NPS-CR-0010", "Bare action resolution and ambiguity rejection", True),
+    _c("TC-N2-BridgeIn-05", NODE_L2, "NPS-CR-0010", "Foreign-protocol error mapping", True),
+    _c("TC-N2-BridgeIn-06", NODE_L2, "NPS-CR-0010", "Undeclared protocol or direction refusal", True),
+    _c("TC-N2-HA-01", NODE_L2, "NPS-CR-0009", "cluster_epoch on topology read surfaces", True),
+    _c("TC-N2-HA-02", NODE_L2, "NPS-CR-0009", "Planned anchor_failover wire shape", True),
+    _c("TC-N2-HA-03", NODE_L2, "NPS-CR-0009", "Active-loss failover is terminal", True),
+    _c("TC-N2-HA-04", NODE_L2, "NPS-CR-0009", "Quorum-loss wire shape and read-only mode", True),
+    _c("TC-N2-HA-05", NODE_L2, "NPS-CR-0009", "Standby rejects topology writes", True),
+    _c("TC-N2-HA-06", NODE_L2, "NPS-CR-0009", "Superseded leader is epoch fenced", True),
+    _c("TC-N2-HA-07", NODE_L2, "NPS-CR-0009", "Registry resolves highest cluster_epoch", True),
+    _c("TC-N2-HA-08", NODE_L2, "NPS-CR-0009", "Equal-epoch split-brain rejection", True),
+    _c("TC-N2-HA-09", NODE_L2, "NPS-CR-0009", "Single-Anchor epoch-one compatibility", True),
 )
