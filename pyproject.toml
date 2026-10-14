@@ -33,7 +33,7 @@ dependencies = [
 
 [project.urls]
 Repository = "https://github.com/labacacia/NPS-SDK-Python"
-Documentation = "https://github.com/labacacia/NPS-Release"
+Documentation = "https://github.com/labacacia/NPS"
 Issues = "https://github.com/labacacia/NPS-SDK-Python/issues"
 
 [project.optional-dependencies]
