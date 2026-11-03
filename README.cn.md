@@ -1,8 +1,16 @@
 [English Version](./README.md) | 中文版
 
 # NPS Python SDK (`nps-lib`)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](../../LICENSE)
-[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.18-orange.svg)](../../CHANGELOG.cn.md)
+
+> alpha.20 发布候选，尚未发布。六SDK辅助契约与实际运行路径分开；完整生产/跨SDK运行时一致性未获资格。
+
+
+> alpha.20实验数据工作流使用专用公开`nps_sdk.nwp.ResultHttpClient`
+> （[API](nps_sdk/nwp/RESULTS.cn.md)）到.NET参考服务端。旧通用`NwpClient`已复现
+> MIME/正文/响应互操作缺陷（#156），下方既有示例不代表已验收的alpha.20通用HTTP
+> 路径。完整生产及全SDK运行时支持排后续。
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/labacacia/NPS/blob/main/LICENSE)
+[![Release](https://img.shields.io/badge/candidate-v1.0.0--alpha.20-orange.svg)](../../CHANGELOG.cn.md)
 [![NCP](https://img.shields.io/badge/NCP-v0.11-5b8cff.svg)]()
 [![NWP](https://img.shields.io/badge/NWP-v0.21-4af0b0.svg)]()
 [![NIP](https://img.shields.io/badge/NIP-v0.14-7b61ff.svg)]()
@@ -15,7 +23,7 @@ PyPI 包名：`nps-lib` | Python 命名空间：`nps_sdk`
 
 ## 状态
 
-**v1.0.0-alpha.19 发布候选版 —— 可移植协议一致性**
+**v1.0.0-alpha.20 发布候选版 —— 可移植协议一致性**
 
 包含 NCP + NWP + NIP + NDP + NOP 全部五个协议的帧定义和异步客户端，**加完整 NPS-RFC-0002 X.509 + ACME `agent-01` NID 证书原语**（`nps_sdk.nip.x509` + `nps_sdk.nip.acme`）。
 
@@ -36,7 +44,7 @@ Alpha.14 候选新增：远程 NIP CA 类型化客户端（`nps_sdk.nip.NipCaCli
 - NDP 0.12 签名 Announce 准入及 registry 冲突/liveness 策略。
 - NOP 0.9 确定性编排、callback 安全、委派、租约与 CR-0007 runtime 决策。
 
-五个 Profile 均消费 [`spec/conformance`](../../spec/conformance/) 下的语言无关 fixture。
+五个 Profile 均消费 [`spec/conformance`](https://github.com/labacacia/NPS/blob/prep/alpha20-release-candidate/spec/conformance/) 下的语言无关 fixture。
 
 ## 安装
 
@@ -239,3 +247,10 @@ pytest -k test_nip     # 仅 NIP 测试
 Apache 2.0 —— 详见 [LICENSE](https://github.com/labacacia/NPS-Dev/blob/main/LICENSE)。
 
 Copyright 2026 INNO LOTUS PTY LTD
+
+
+## Alpha.20 开发版结果客户端
+
+显式实验性[ResultHttpClient](nps_sdk/nwp/RESULTS.cn.md)用于D20-05公开.NET/Python网关工作流。
+SDK契约测试与真实传输/集成资格分开；不宣称已发布alpha.19包含此源码接口，开发包需记录源码/包哈希。
+已有NwpClient默认行为不变。

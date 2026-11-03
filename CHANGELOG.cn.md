@@ -8,6 +8,26 @@
 
 ---
 
+## [1.0.0-alpha.20] — 发布候选，尚未发布
+
+- 有边界实验：结果资源/授权、重复schema批次、本地任务交接和易失节点转移；各语言支持范围不同，未承诺六SDK完整运行时一致性。
+- 保留与等价HTTPgzip及普通工具的真实测量；不宣称固定token、费用或速度收益。
+- 候选使用统一版本、本地CI与独立包验证；完整生产能力、beta和实际发布保持后续门槛。
+
+## [1.0.0-alpha.19] —— 2026-09-05
+
+### 新增
+
+- 新增输入驱动的 NCP、NWP、NIP、NDP、NOP alpha.19 策略组件，并可执行全部 47 条共享加固向量，覆盖负向路径与 fixture 之外的边界分支。
+
+### 变更
+
+- 将 Node L2 扩展到 v0.7/38 cases，纳入当前 AaaS L2-01..L2-07；L2-01..05
+  为强制项，L2-06/07 记 `na` 时必须携带有理由的 message。
+- 将 Node L2 manifest 对齐 v0.6 与全部 31 个 case；validation 现会强制校验
+  summary 完整性、整族适用性以及 single-/multi-Anchor HA 互斥约束。
+- 注册 alpha.19 新增的协议错误码及其规范 NPS 状态映射。
+
 ## [1.0.0-alpha.18] —— 2026-08-15
 
 ### 新增
@@ -50,6 +70,15 @@
 - `nps_sdk.nip.NipCaClient`：远程 NIP CA 的类型化客户端，覆盖 discovery、CRL、agent/node 注册、X.509 注册、续签、撤销和校验。
 - `nps_sdk.nwp.NwpNativeNodeServer`：native-mode NWP 服务端 helper，用于在已建立的 NCP stream 上分发 QueryFrame/ActionFrame。
 - `nps_sdk.conformance`：TC-N1/TC-N2 一致性用例目录、manifest 构造器和校验器，用于 CI/自认证流程。
+
+---
+
+## [1.0.0-alpha.11] —— 2026-05-28
+
+### 新增
+- NOP saga compensation、`WEIGHTED_FIRST_K` / `MERGE_ALL`、cross-cluster delegate 与 AlignStream Ack/Nak。
+- NDP security profile、60 秒 ephemeral TTL、AnnounceFrame 字段，以及带 typed node/edge 的 GraphFrame §5 格式。
+- NIP reputation metadata 与 OCSP staple；NWP SubscribeFrame 与 NWM `trust_anchors`。
 
 ---
 

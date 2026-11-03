@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from pathlib import Path
+from .conformance_fixtures import conformance_fixture
 
 from nps_sdk.ncp.runtime_hardening import evaluate_runtime_hardening
 from nps_sdk.ndp.recovery_policy import evaluate_recovery
@@ -12,12 +12,7 @@ from nps_sdk.nwp.alpha19_policy import evaluate_subscription_lease, normalize_ma
 
 
 def _vectors(protocol: str, name: str) -> list[dict]:
-    relative = Path("spec") / "conformance" / protocol / name
-    for root in Path(__file__).resolve().parents:
-        candidate = root / relative
-        if candidate.is_file():
-            return json.loads(candidate.read_text())["vectors"]
-    raise FileNotFoundError(relative)
+    return json.loads(conformance_fixture(protocol, name).read_text(encoding="utf-8"))["vectors"]
 
 
 def test_alpha19_shared_vectors_are_executable() -> None:
