@@ -2,9 +2,17 @@ English | [中文版](./README.cn.md)
 
 # NPS Python SDK (`nps-lib`)
 
-> First time here? Start with [START-HERE.md](START-HERE.md) for architecture, security, and review guidance.
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/release-v1.0.0--alpha.18-orange.svg)](CHANGELOG.md)
+> alpha.20 candidate, unpublished. Six-SDK helper contracts and qualified runtime
+> paths differ; full production/cross-SDK runtime parity is not qualified.
+
+
+> Alpha.20 experimental data workflows use the dedicated public
+> `nps_sdk.nwp.ResultHttpClient` ([API](nps_sdk/nwp/RESULTS.md)) against the .NET
+> reference server. The older general `NwpClient` has a reproduced MIME/body/
+> response interoperability gap (#156); its examples below are not qualified
+> alpha.20 general HTTP paths. Full production/all-SDK runtime support is later work.
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/labacacia/NPS/blob/main/LICENSE)
+[![Release](https://img.shields.io/badge/candidate-v1.0.0--alpha.20-orange.svg)](CHANGELOG.md)
 [![NCP](https://img.shields.io/badge/NCP-v0.11-5b8cff.svg)]()
 [![NWP](https://img.shields.io/badge/NWP-v0.21-4af0b0.svg)]()
 [![NIP](https://img.shields.io/badge/NIP-v0.14-7b61ff.svg)]()
@@ -17,13 +25,21 @@ PyPI package: `nps-lib` | Python namespace: `nps_sdk`
 
 ## Status
 
-**v1.0.0-alpha.19 release candidate — portable protocol conformance**
+**v1.0.0-alpha.20 release candidate — unpublished, bounded experimental support**
 
 Covers all five protocols — NCP + NWP + NIP + NDP + NOP — frame definitions, async client, Ed25519 identity management, **plus full NPS-RFC-0002 X.509 + ACME `agent-01` NID certificate primitives** (`nps_sdk.nip.x509` + `nps_sdk.nip.acme`).
 
 The full SDK suite and the shared Alpha.18 conformance fixtures pass.
 
 Alpha.15 additions: typed remote NIP CA client (`nps_sdk.nip.NipCaClient`), native-mode NWP serving helper (`nps_sdk.nwp.NwpNativeNodeServer`), and TC-N1/TC-N2 conformance manifest helpers (`nps_sdk.conformance`).
+
+## Alpha.20 development result client
+
+The explicit experimental [`ResultHttpClient`](nps_sdk/nwp/RESULTS.md) is added for
+D20-05's public .NET/Python gateway workflow. Its SDK contract tests are separate
+from real transport/integration qualification. This source surface is not advertised
+as available in the published distribution; package/source hashes are recorded
+when building development artifacts. Existing `NwpClient` defaults are unchanged.
 
 ## Requirements
 
@@ -40,7 +56,7 @@ Alpha.15 additions: typed remote NIP CA client (`nps_sdk.nip.NipCaClient`), nati
   and CR-0007 runtime decisions.
 
 All five profiles consume the language-neutral fixtures under
-[`spec/conformance`](spec/conformance/).
+[`spec/conformance`](https://github.com/labacacia/NPS/blob/prep/alpha20-release-candidate/spec/conformance/).
 
 ## Installation
 

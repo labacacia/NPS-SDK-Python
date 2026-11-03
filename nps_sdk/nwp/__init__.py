@@ -19,6 +19,7 @@ from nps_sdk.nwp.frames import (
     VectorSearchOptions,
 )
 from nps_sdk.nwp.client import NwpClient
+from nps_sdk.nwp.results import ResultHttpClient, ResultHttpError, ResultDescriptor, ResultPage, ResultAggregate
 from nps_sdk.nwp import error_codes
 from nps_sdk.nwp.error_codes import NWP_ERROR_TO_NPS_STATUS
 from nps_sdk.nwp.alpha19_policy import normalize_manifest_metadata, evaluate_subscription_lease
@@ -174,6 +175,11 @@ __all__ = [
     "AsyncActionResponse",
     "SubscribeFrame",
     "NwpClient",
+    "ResultHttpClient",
+    "ResultHttpError",
+    "ResultDescriptor",
+    "ResultPage",
+    "ResultAggregate",
     # error codes
     "error_codes",
     "NWP_ERROR_TO_NPS_STATUS",
